@@ -1,0 +1,10 @@
+[package]
+name = "deepin-translation-utils"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+zhconv = { version = "0.3.3", features = ["opencc"] }
+serde = { version = "1.0", features = ["derive"] }
+quick-xml = { version = "0.37.4", features = ["serialize"] }
+clap = { version = "4.5.37", features = ["derive"] }
