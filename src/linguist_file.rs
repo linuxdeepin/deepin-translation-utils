@@ -7,6 +7,7 @@
 use std::fs;
 use std::path::PathBuf;
 
+use thiserror::Error as TeError;
 use quick_xml::DeError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -61,11 +62,14 @@ pub struct Location {
     pub line: String,
 }
 
-#[derive(Debug)]
-pub enum TsFileLoadError {
+#[derive(TeError, Debug)]
+pub enum TsLoadError {
+    #[error("File not found")]
     FileNotFound,
-    FailedToReadFile,
-    SerdeError(DeError),
+    #[error("Can not read file")]
+    ReadFile(#[from] std::io::Error),
+    #[error("Fail to deserialize file: {0}")]
+    Serde(#[from] DeError),
 }
 
 fn mark_all_as_unfinished(ts: &mut Ts) {
@@ -83,7 +87,7 @@ pub fn correct_language_code(language_code: &String) -> String {
     return result;
 }
 
-pub fn load_ts_file_or_default(linguist_ts_file: &PathBuf, fallback: &Ts, fallback_language_code: &String) -> Result<Ts, TsFileLoadError> {
+pub fn load_ts_file_or_default(linguist_ts_file: &PathBuf, fallback: &Ts, fallback_language_code: &String) -> Result<Ts, TsLoadError> {
     if !linguist_ts_file.exists() {
         let mut clone = fallback.clone();
         clone.language = fallback_language_code.clone();
@@ -94,21 +98,12 @@ pub fn load_ts_file_or_default(linguist_ts_file: &PathBuf, fallback: &Ts, fallba
     }
 }
 
-pub fn load_ts_file(linguist_ts_file: &PathBuf) -> Result<Ts, TsFileLoadError> {
+pub fn load_ts_file(linguist_ts_file: &PathBuf) -> Result<Ts, TsLoadError> {
     if !linguist_ts_file.is_file() {
-        return Err(TsFileLoadError::FileNotFound);
+        return Err(TsLoadError::FileNotFound);
     }
-    let source_content = match fs::read_to_string(&linguist_ts_file) {
-        Ok(source_content) => source_content,
-        Err(_e) => {
-            return Err(TsFileLoadError::FailedToReadFile);
-        }
-    };
-    let source_content = quick_xml::de::from_str::<Ts>(source_content.as_str());
-    match source_content {
-        Ok(source_content) => Ok(source_content),
-        Err(e) => Err(TsFileLoadError::SerdeError(e)),
-    }
+    let source_content = fs::read_to_string(&linguist_ts_file)?;
+    Ok(quick_xml::de::from_str::<Ts>(source_content.as_str())?)
 }
 
 pub trait WriterExt {
@@ -127,4 +122,19 @@ impl<W: std::io::Write> WriterExt for Writer<W> {
         self.write_event(Event::DocType(BytesText::new("TS")))?;
         self.write_serializable("TS", content)
     }
+}
+
+#[derive(TeError, Debug)]
+pub enum TsSaveError {
+    #[error("Can not create file")]
+    CreateFile(#[from] std::io::Error),
+    #[error("Fail to serialize file: {0}")]
+    Serde(#[from] SeError),
+}
+
+pub fn save_ts_file(linguist_ts_file: &PathBuf, content: &Ts) -> Result<(), TsSaveError> {
+    let target_file = fs::File::create(linguist_ts_file)?;
+    let mut writer = Writer::new_with_indent(&target_file, b' ', 4);
+    writer.write_linguist_ts_file(content)?;
+    Ok(())
 }

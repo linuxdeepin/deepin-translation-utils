@@ -16,16 +16,16 @@ fn main() {
 
     match args.command {
         Commands::ZhConv { source_language, target_languages, linguist_ts_file } => {
-            let result = subcmd_zhconv(source_language, target_languages, linguist_ts_file);
-            if result.is_err() {
+            subcmd_zhconv(source_language, target_languages, linguist_ts_file).unwrap_or_else(|err| {
+                eprintln!("\x1B[31m{0}\x1B[0m", err);
                 std::process::exit(1);
-            }
+            });
         },
         Commands::ZhConvPlain { target_languages, content } => {
-            let result = subcmd_zhconv_plain(target_languages, content);
-            if result.is_err() {
+            subcmd_zhconv_plain(target_languages, content).unwrap_or_else(|err| {
+                eprintln!("\x1B[31m{0}\x1B[0m", err);
                 std::process::exit(1);
-            }
+            });
         },
     }
 }
