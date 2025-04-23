@@ -50,12 +50,12 @@ pub struct Context {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Message {
+    #[serde(rename = "location", default)]
+    pub location: Vec<Location>,
     #[serde(rename = "source")]
     pub source: String,
     #[serde(rename = "translation")]
     pub translation: Translation,
-    #[serde(rename = "location", skip_serializing_if = "Option::is_none", default)]
-    pub location: Option<Location>,
     #[serde(rename = "comment", skip_serializing_if = "Option::is_none", default)]
     pub comment: Option<String>,
 }
@@ -85,8 +85,8 @@ pub struct Translation {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Location {
-    #[serde(rename = "@filename")]
-    pub filename: String,
+    #[serde(rename = "@filename", skip_serializing_if = "Option::is_none")]
+    pub filename: Option<String>,
     #[serde(rename = "@line")]
     pub line: String,
 }
@@ -168,6 +168,8 @@ pub mod tests {
 <context>
     <name>ts::SampleContext</name>
     <message>
+        <location line="+16"/>
+        <location filename="../../widget/mainwindow.cpp" line="+65"/>
         <source>A friend in need is a friend indeed</source>
         <translation>海内存知己</translation>
     </message>
