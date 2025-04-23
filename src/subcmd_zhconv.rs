@@ -38,6 +38,33 @@ fn zhconv_wrapper(text: &String, target: &String) -> Result<String, CmdError> {
     Ok(zhconv(text.as_str(), target))
 }
 
+fn translate_ts_content(source_content: &Ts, target_content: &mut Ts) -> Result<(), CmdError> {
+    if target_content.contexts.len() != source_content.contexts.len() {
+        return Err(CmdError::DifferentContexts(target_content.language.clone()));
+    }
+    for (index, context) in target_content.contexts.iter_mut().enumerate() {
+        let source_context = &source_content.contexts[index];
+        if context.messages.len() != source_context.messages.len() {
+            return Err(CmdError::DifferentMessages(target_content.language.clone()));
+        }
+        // for loop with index so we could access the source context and message at the same index
+        for (index, message) in context.messages.iter_mut().enumerate() {
+            let source_message = &source_context.messages[index];
+            // Skip the message if it's finished
+            if !matches!(message.translation.type_attr, Some(TranslationType::Unfinished)) {
+                continue;
+            }
+            if matches!(source_message.translation.type_attr, Some(TranslationType::Unfinished)) {
+                continue;
+            }
+            if let Some(value) = &source_message.translation.value {
+                message.fill_translation(&zhconv_wrapper(&value, &target_content.language)?);
+            }
+        }
+    }
+    Ok(())
+}
+
 pub fn subcmd_zhconv(source_language: String, target_languages: Vec<String>, linguist_ts_file: PathBuf) -> Result<(), CmdError> {
     if !linguist_ts_file.is_file() {
         return Err(CmdError::FileNotFound(linguist_ts_file.clone()));
@@ -62,30 +89,7 @@ pub fn subcmd_zhconv(source_language: String, target_languages: Vec<String>, lin
     }
 
     for (target_path, target_content) in &mut target_contents {
-        if target_content.contexts.len() != source_content.contexts.len() {
-            return Err(CmdError::DifferentContexts(target_content.language.clone()));
-        }
-        for (index, context) in target_content.contexts.iter_mut().enumerate() {
-            let source_context = &source_content.contexts[index];
-            if context.messages.len() != source_context.messages.len() {
-                return Err(CmdError::DifferentMessages(target_content.language.clone()));
-            }
-            // for loop with index so we could access the source context and message at the same index
-            for (index, message) in context.messages.iter_mut().enumerate() {
-                let source_message = &source_context.messages[index];
-                // Skip the message if it's finished
-                if !matches!(message.translation.type_attr, Some(ref s) if s == "unfinished") {
-                    continue;
-                }
-                if matches!(source_message.translation.type_attr, Some(ref s) if s == "unfinished") {
-                    continue;
-                }
-                if let Some(value) = &source_message.translation.value {
-                    message.translation.value = Some(zhconv_wrapper(&value, &target_content.language)?);
-                    message.translation.type_attr = None;
-                }
-            }
-        }
+        translate_ts_content(&source_content, target_content)?;
 
         save_ts_file(&target_path, &target_content)
             .or_else(|err| { Err(CmdError::SaveFile(target_path.clone(), err)) })?;
@@ -101,4 +105,26 @@ pub fn subcmd_zhconv_plain(target_languages: Vec<String>, content: String) -> Re
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::linguist_file::tests::*;
+
+    #[test]
+    fn tst_translate_ts_content() {
+        let source_ts: Ts = quick_xml::de::from_str(TEST_ZH_CN_TS_CONTENT).unwrap();
+        let mut target_ts: Ts = source_ts.clone();
+        target_ts.language = "zh_TW".to_string();
+        target_ts.clear_finished_messages();
+        assert!(translate_ts_content(&source_ts, &mut target_ts).is_ok());
+        assert_eq!(target_ts.language, "zh_TW");
+        assert_eq!(target_ts.contexts.len(), 1);
+        assert_eq!(target_ts.contexts[0].messages.len(), 4);
+        assert_eq!(target_ts.contexts[0].messages[0].translation.value, Some(String::from("海內存知己")));
+        assert_eq!(target_ts.contexts[0].messages[1].translation.value, Some(String::from("軟體開發工程師在使用滑鼠操作螢幕上的游標")));
+        assert_eq!(target_ts.contexts[0].messages[2].translation.value, Some(String::from("电视频段"))); // marked as obsolete, should not be translated.
+        assert_eq!(target_ts.contexts[0].messages[3].translation.value, None); // source is also untranslated
+    }
 }

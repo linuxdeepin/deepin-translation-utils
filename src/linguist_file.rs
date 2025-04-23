@@ -26,6 +26,20 @@ pub struct Ts {
     pub contexts: Vec<Context>,
 }
 
+impl Ts {
+    pub fn clear_finished_messages(&mut self) {
+        for context in &mut self.contexts {
+            for message in &mut context.messages {
+                if message.translation.type_attr.is_some() {
+                    continue;
+                }
+                message.translation.value = None;
+                message.translation.type_attr = Some(TranslationType::Unfinished);
+            }
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Context {
     #[serde(rename = "name")]
@@ -46,10 +60,25 @@ pub struct Message {
     pub comment: Option<String>,
 }
 
+impl Message {
+    pub fn fill_translation(&mut self, translation: &String) {
+        self.translation.value = Some(translation.clone());
+        self.translation.type_attr = None;
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum TranslationType {
+    Unfinished,
+    Vanished,
+    Obsolete,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Translation {
     #[serde(rename = "@type", skip_serializing_if = "Option::is_none", default)]
-    pub type_attr: Option<String>,
+    pub type_attr: Option<TranslationType>,
     #[serde(rename = "$value")]
     pub value: Option<String>,
 }
@@ -72,15 +101,6 @@ pub enum TsLoadError {
     Serde(#[from] DeError),
 }
 
-fn mark_all_as_unfinished(ts: &mut Ts) {
-    for context in &mut ts.contexts {
-        for message in &mut context.messages {
-            message.translation.value = None;
-            message.translation.type_attr = Some("unfinished".to_string());
-        }
-    }
-}
-
 pub fn correct_language_code(language_code: &String) -> String {
     let mut result = language_code.clone();
     result = result.replace("_", "-");
@@ -91,7 +111,7 @@ pub fn load_ts_file_or_default(linguist_ts_file: &PathBuf, fallback: &Ts, fallba
     if !linguist_ts_file.exists() {
         let mut clone = fallback.clone();
         clone.language = fallback_language_code.clone();
-        mark_all_as_unfinished(&mut clone);
+        clone.clear_finished_messages();
         return Ok(clone);
     } else {
         return load_ts_file(linguist_ts_file);
@@ -137,4 +157,45 @@ pub fn save_ts_file(linguist_ts_file: &PathBuf, content: &Ts) -> Result<(), TsSa
     let mut writer = Writer::new_with_indent(&target_file, b' ', 4);
     writer.write_linguist_ts_file(content)?;
     Ok(())
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    pub const TEST_ZH_CN_TS_CONTENT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" ?><!DOCTYPE TS><TS language="zh_CN" version="2.1">
+<context>
+    <name>ts::SampleContext</name>
+    <message>
+        <source>A friend in need is a friend indeed</source>
+        <translation>海内存知己</translation>
+    </message>
+    <message>
+        <source>Software engineer using mouse to manipulate the cursor on the screen</source>
+        <translation>软件开发工程师在使用鼠标操作屏幕上的光标</translation>
+    </message>
+    <message>
+        <source>TV band</source>
+        <translation type="obsolete">电视频段</translation>
+    </message>
+    <message>
+        <source>England</source>
+        <translation type="unfinished"/>
+    </message>
+</context>
+</TS>"#;
+
+    #[test]
+    fn tst_parse_ts_content() {
+        let ts: Ts = quick_xml::de::from_str(TEST_ZH_CN_TS_CONTENT).unwrap();
+        assert_eq!(ts.language, "zh_CN");
+        assert_eq!(ts.version, "2.1");
+        assert_eq!(ts.contexts.len(), 1);
+        assert_eq!(ts.contexts[0].name, "ts::SampleContext");
+        assert_eq!(ts.contexts[0].messages.len(), 4);
+        assert!(matches!(ts.contexts[0].messages[1].translation.type_attr, None));
+        assert!(matches!(ts.contexts[0].messages[2].translation.type_attr, Some(TranslationType::Obsolete)));
+        assert!(matches!(ts.contexts[0].messages[3].translation.type_attr, Some(TranslationType::Unfinished)));
+    }
 }
