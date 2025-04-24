@@ -6,6 +6,7 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::u64;
 
 use thiserror::Error as TeError;
 use quick_xml::DeError;
@@ -15,11 +16,19 @@ use quick_xml::se::SeError;
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesText, Event};
 
+#[derive(Debug, PartialEq)]
+pub struct TsMessageStats {
+    pub finished: u64,
+    pub unfinished: u64,
+    pub vanished: u64,
+    pub obsolete: u64,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename = "TS")]
 pub struct Ts {
     #[serde(rename = "@language")]
-    pub language: String,
+    pub language: Option<String>,
     #[serde(rename = "@version")]
     pub version: String,
     #[serde(rename = "context")]
@@ -36,6 +45,41 @@ impl Ts {
                 message.translation.value = None;
                 message.translation.type_attr = Some(TranslationType::Unfinished);
             }
+        }
+    }
+
+    pub fn set_language(&mut self, language: &String) {
+        self.language = Some(language.clone());
+    }
+
+    pub fn get_message_stats(&self) -> TsMessageStats {
+        let mut finished = 0;
+        let mut unfinished = 0;
+        let mut vanished = 0;
+        let mut obsolete = 0;
+        for context in &self.contexts {
+            for message in &context.messages {
+                match message.translation.type_attr {
+                    Some(TranslationType::Unfinished) => {
+                        unfinished += 1;
+                    }
+                    Some(TranslationType::Vanished) => {
+                        vanished += 1;
+                    }
+                    Some(TranslationType::Obsolete) => {
+                        obsolete += 1;
+                    }
+                    None => {
+                        finished += 1;
+                    }
+                }
+            }
+        }
+        return TsMessageStats {
+            finished,
+            unfinished,
+            vanished,
+            obsolete,
         }
     }
 }
@@ -110,7 +154,7 @@ pub fn correct_language_code(language_code: &String) -> String {
 pub fn load_ts_file_or_default(linguist_ts_file: &PathBuf, fallback: &Ts, fallback_language_code: &String) -> Result<Ts, TsLoadError> {
     if !linguist_ts_file.exists() {
         let mut clone = fallback.clone();
-        clone.language = fallback_language_code.clone();
+        clone.language = Some(fallback_language_code.clone());
         clone.clear_finished_messages();
         return Ok(clone);
     } else {
@@ -168,12 +212,13 @@ pub mod tests {
 <context>
     <name>ts::SampleContext</name>
     <message>
-        <location line="+16"/>
-        <location filename="../../widget/mainwindow.cpp" line="+65"/>
+        <location filename="../../widget/mainwindow.ui" line="+17"/>
         <source>A friend in need is a friend indeed</source>
         <translation>海内存知己</translation>
     </message>
     <message>
+        <location line="+26"/>
+        <location filename="../../widget/mainwindow.cpp" line="+65"/>
         <source>Software engineer using mouse to manipulate the cursor on the screen</source>
         <translation>软件开发工程师在使用鼠标操作屏幕上的光标</translation>
     </message>
@@ -191,7 +236,7 @@ pub mod tests {
     #[test]
     fn tst_parse_ts_content() {
         let ts: Ts = quick_xml::de::from_str(TEST_ZH_CN_TS_CONTENT).unwrap();
-        assert_eq!(ts.language, "zh_CN");
+        assert_eq!(ts.language, Some("zh_CN".to_string()));
         assert_eq!(ts.version, "2.1");
         assert_eq!(ts.contexts.len(), 1);
         assert_eq!(ts.contexts[0].name, "ts::SampleContext");
@@ -199,5 +244,11 @@ pub mod tests {
         assert!(matches!(ts.contexts[0].messages[1].translation.type_attr, None));
         assert!(matches!(ts.contexts[0].messages[2].translation.type_attr, Some(TranslationType::Obsolete)));
         assert!(matches!(ts.contexts[0].messages[3].translation.type_attr, Some(TranslationType::Unfinished)));
+        assert_eq!(ts.get_message_stats(), TsMessageStats {
+            finished: 2,
+            unfinished: 1,
+            vanished: 0,
+            obsolete: 1,
+        })
     }
 }

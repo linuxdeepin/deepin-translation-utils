@@ -30,6 +30,8 @@ pub enum CmdError {
     SaveFile(PathBuf, #[source] TsSaveError),
     #[error("Fail to parse language code")]
     ParseLanguageCode,
+    #[error("Missing language code in Linguist TS file")]
+    MissingLanguageCode,
 }
 
 fn zhconv_wrapper(text: &String, target: &String) -> Result<String, CmdError> {
@@ -39,13 +41,14 @@ fn zhconv_wrapper(text: &String, target: &String) -> Result<String, CmdError> {
 }
 
 fn translate_ts_content(source_content: &Ts, target_content: &mut Ts) -> Result<(), CmdError> {
+    let language_code = target_content.language.as_ref().ok_or(CmdError::MissingLanguageCode)?;
     if target_content.contexts.len() != source_content.contexts.len() {
-        return Err(CmdError::DifferentContexts(target_content.language.clone()));
+        return Err(CmdError::DifferentContexts(language_code.clone()));
     }
     for (index, context) in target_content.contexts.iter_mut().enumerate() {
         let source_context = &source_content.contexts[index];
         if context.messages.len() != source_context.messages.len() {
-            return Err(CmdError::DifferentMessages(target_content.language.clone()));
+            return Err(CmdError::DifferentMessages(language_code.clone()));
         }
         // for loop with index so we could access the source context and message at the same index
         for (index, message) in context.messages.iter_mut().enumerate() {
@@ -58,7 +61,7 @@ fn translate_ts_content(source_content: &Ts, target_content: &mut Ts) -> Result<
                 continue;
             }
             if let Some(value) = &source_message.translation.value {
-                message.fill_translation(&zhconv_wrapper(&value, &target_content.language)?);
+                message.fill_translation(&zhconv_wrapper(&value, &language_code)?);
             }
         }
     }
@@ -83,8 +86,13 @@ pub fn subcmd_zhconv(source_language: String, target_languages: Vec<String>, lin
         let target_file_name = file_name.to_string_lossy().replace(&source_language, &target_language);
         let target_file_path = linguist_ts_file.parent().ok_or(CmdError::NoDirName)
             .and_then(|p| { Ok(p.join(&target_file_name)) })?;
-        let target_content = load_ts_file_or_default(&target_file_path, &source_content, &target_language)
+        let mut target_content = load_ts_file_or_default(&target_file_path, &source_content, &target_language)
             .or_else(|e| { Err(CmdError::LoadTargetFile(target_file_path.clone(), e)) })?;
+        // if the target file's language code is not match to target_language, set it to target_language
+        if !matches!(&target_content.language, Some(lang) if lang == &target_language) {
+            eprintln!("Warning: Target file {target_file_path:?} has no or unmatched language code, will set it to {target_language}.");
+            target_content.set_language(&target_language);
+        }
         target_contents.push((target_file_path, target_content));
     }
 
@@ -116,10 +124,10 @@ mod tests {
     fn tst_translate_ts_content() {
         let source_ts: Ts = quick_xml::de::from_str(TEST_ZH_CN_TS_CONTENT).unwrap();
         let mut target_ts: Ts = source_ts.clone();
-        target_ts.language = "zh_TW".to_string();
+        target_ts.language = Some("zh_TW".to_string());
         target_ts.clear_finished_messages();
         assert!(translate_ts_content(&source_ts, &mut target_ts).is_ok());
-        assert_eq!(target_ts.language, "zh_TW");
+        assert_eq!(target_ts.language, Some("zh_TW".to_string()));
         assert_eq!(target_ts.contexts.len(), 1);
         assert_eq!(target_ts.contexts[0].messages.len(), 4);
         assert_eq!(target_ts.contexts[0].messages[0].translation.value, Some(String::from("海內存知己")));
