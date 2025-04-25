@@ -39,4 +39,18 @@ pub enum Commands {
         target_languages: Vec<String>,
         content: String,
     },
+
+    #[command(name = "statistics")]
+    #[command(
+        about = "Prints translation statistics of the provided project",
+        long_about = "Prints translation statistics of the provided project according to transifex.yaml.\n\n\
+            Only Qt Linguist-based resources are processed, other resources like PO-based ones are ignored.",
+    )]
+    Statistics {
+        project_root: PathBuf,
+        #[clap(short, long, default_value_t, value_enum)]
+        format: crate::subcmd_statistics::StatsFormat,
+        #[clap(short, long, default_value_t, value_enum)]
+        sort_by: crate::subcmd_statistics::StatsSortBy,
+    }
 }

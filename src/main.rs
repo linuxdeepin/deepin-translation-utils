@@ -2,12 +2,15 @@
 //
 // SPDX-License-Identifier: MIT
 
-mod linguist_file;
 mod cli_args;
+mod linguist_file;
+mod transifex_yaml_file;
 mod subcmd_zhconv;
+mod subcmd_statistics;
 
 use crate::cli_args::*;
 use crate::subcmd_zhconv::*;
+use crate::subcmd_statistics::*;
 
 use clap::Parser;
 
@@ -27,5 +30,11 @@ fn main() {
                 std::process::exit(1);
             });
         },
+        Commands::Statistics { project_root, format, sort_by} => {
+            subcmd_statistics(&project_root, format, sort_by).unwrap_or_else(|err| {
+                eprintln!("\x1B[31m{0}\x1B[0m", err);
+                std::process::exit(1);
+            });
+        }
     }
 }

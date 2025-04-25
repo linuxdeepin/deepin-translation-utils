@@ -1,0 +1,181 @@
+// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+//
+// SPDX-License-Identifier: MIT
+
+use serde::Serialize;
+use thiserror::Error as TeError;
+use std::path::PathBuf;
+use crate::{linguist_file::*, transifex_yaml_file::*};
+
+#[derive(TeError, Debug)]
+pub enum CmdStatsError {
+    #[error("Fail to load Qt Linguist TS file {0:?} because: {1}")]
+    LoadSourceFile(PathBuf, #[source] TsLoadError),
+    #[error("Fail to load transifex.yaml because: {0}")]
+    LoadTxYamlFile(TxYamlLoadError),
+    #[error("Fail to match resources because: {0}")]
+    MatchResources(#[source] std::io::Error),
+    #[error("Fail to serialize stats: {0}")]
+    Serde(#[from] serde_yml::Error),
+}
+
+#[derive(clap::ValueEnum, Clone, Default, Copy, Debug)]
+pub enum StatsFormat {
+    #[default]
+    PlainTable,
+    Yaml,
+}
+
+#[derive(clap::ValueEnum, Clone, Default, Copy, Debug)]
+pub enum StatsSortBy {
+    LanguageCode,
+    #[default]
+    Completeness,
+}
+
+#[derive(Default, Serialize)]
+struct ProjectResourceStats {
+    project_path: PathBuf,
+    target_lang_codes: Vec<String>,
+    resource_groups: Vec<TsResourceGroupStats>,
+}
+
+impl ProjectResourceStats {
+    pub fn get_source_stats(&self) -> (i32, TsMessageStats) {
+        let mut total_resources = 0;
+        let mut total_stats = TsMessageStats::default();
+        for resource_group in &self.resource_groups {
+            total_stats += &resource_group.source_stats;
+            total_resources += 1;
+        };
+        (total_resources, total_stats)
+    }
+
+    pub fn get_target_stats_by_language_code(&self, language_code: &String) -> (i32, TsMessageStats) {
+        let mut total_resources = 0;
+        let mut total_stats = TsMessageStats::default();
+        for resource_group in &self.resource_groups {
+            if let Some(target_stats) = resource_group.target_stats.get(language_code) {
+                total_stats += &target_stats.stats;
+                total_resources += 1;
+            }
+        };
+        (total_resources, total_stats)
+    }
+
+    pub fn print_state_plain_table(&self, sort_by: StatsSortBy) {
+        println!("| No. | Lang   | Completeness | Resources | Translated | Vanished | Obsolete |");
+        println!("| --- | ------ | ------------ | --------- | ---------- | -------- | -------- |");
+        let (source_resources, source_stats) = self.get_source_stats();
+        println!("|   0 | Source | {0:>11.2}% | {1:9} | {2:10} | {3:8} | {4:8} |", 
+            100.0, source_resources, source_stats.finished + source_stats.unfinished, source_stats.vanished, source_stats.obsolete);
+        let language_codes = match sort_by {
+            StatsSortBy::LanguageCode => {
+                self.target_lang_codes.clone()
+            }
+            StatsSortBy::Completeness => {
+                let mut sorted_langs = self.target_lang_codes.clone();
+                sorted_langs.sort_by(|a, b| {
+                    let (_, a_stats) = self.get_target_stats_by_language_code(&a);
+                    let (_, b_stats) = self.get_target_stats_by_language_code(&b);
+                    let a_completeness = a_stats.completeness_percentage();
+                    let b_completeness = b_stats.completeness_percentage();
+                    if a_completeness > b_completeness {
+                        std::cmp::Ordering::Less
+                    } else if a_completeness < b_completeness {
+                        std::cmp::Ordering::Greater
+                    } else {
+                        std::cmp::Ordering::Equal
+                    }
+                });
+                sorted_langs
+            }
+        };
+        
+        for (idx, lang) in language_codes.iter().enumerate() {
+            let (target_resources, target_stats) = self.get_target_stats_by_language_code(&lang);
+            println!("| {0:3} | {1:>6} | {2:>11.2}% | {3:9} | {4:10} | {5:8} | {6:8} |", 
+                idx + 1, lang, target_stats.completeness_percentage(), target_resources, target_stats.finished, target_stats.vanished, target_stats.obsolete);
+        }
+    }
+
+    pub fn print_stats_yaml(&self) -> Result<(), serde_yml::Error> {
+        let yaml_str = serde_yml::to_string::<Self>(self)?;
+        println!("{}", yaml_str);
+        Ok(())
+    }
+}
+
+#[derive(Default, Serialize)]
+struct TsResourceGroupStats {
+    source_path: PathBuf,
+    source_lang_code: String,
+    source_stats: TsMessageStats,
+    target_lang_codes: Vec<String>,
+    target_stats: std::collections::HashMap<String, TsResourceStats>,
+}
+
+#[derive(Default, Serialize)]
+struct TsResourceStats {
+    resource_path: PathBuf,
+    stats: TsMessageStats,
+}
+
+pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: StatsSortBy) -> Result<(), CmdStatsError> {
+    let (transifex_yaml_file, tx_yaml) = try_load_tx_yaml_file(project_root).or_else(|e| { Err(CmdStatsError::LoadTxYamlFile(e)) })?;
+    if matches!(format, StatsFormat::PlainTable) {
+        println!("Found transifex.yaml file at: {transifex_yaml_file:?}");
+    }
+    let mut project_stats = ProjectResourceStats::default();
+    project_stats.project_path = project_root.clone();
+
+    for filter in &tx_yaml.filters {
+        if filter.format != "QT" || filter.type_attr != "file" {
+            if matches!(format, StatsFormat::PlainTable) {
+                println!("Skipping resource {:?} with format {:?}...", filter.source, filter.format);
+            }
+            continue;
+        }
+        let mut source_group_stats = TsResourceGroupStats::default();
+        let source_file = project_root.join(&filter.source);
+        // check if project_root/filter.source_file exists, and print stats of the source file if exists.
+        if source_file.is_file() {
+            if matches!(format, StatsFormat::PlainTable) {
+                println!("Hit source file at: {source_file:?}");
+            }
+            let ts_content = load_ts_file(&source_file)
+                .or_else(|e| { Err(CmdStatsError::LoadSourceFile(source_file.clone(), e)) })?;
+            source_group_stats.source_path = source_file.clone();
+            source_group_stats.source_lang_code = filter.source_lang.clone();
+            source_group_stats.source_stats = ts_content.get_message_stats();
+        } else {
+            continue;
+        }
+
+        let matched_resources = filter.match_target_files(project_root).or_else(|e| { Err(CmdStatsError::MatchResources(e)) })?;
+        for (lang, target_file) in matched_resources {
+            let ts_content = load_ts_file(&target_file)
+                .or_else(|e| { Err(CmdStatsError::LoadSourceFile(target_file.clone(), e)) })?;
+            let target_resource_stats = TsResourceStats {
+                resource_path: target_file.clone(),
+                stats: ts_content.get_message_stats(),
+            };
+            source_group_stats.target_lang_codes.push(lang.clone());
+            if !project_stats.target_lang_codes.contains(&lang) {
+                project_stats.target_lang_codes.push(lang.clone());
+            }
+            source_group_stats.target_stats.insert(lang, target_resource_stats);
+        }
+
+        project_stats.resource_groups.push(source_group_stats);
+    }
+    project_stats.target_lang_codes.sort();
+
+    // finally, print the stats of the project
+    match format {
+        StatsFormat::PlainTable => project_stats.print_state_plain_table(sort_by),
+        StatsFormat::Yaml => project_stats.print_stats_yaml()?,
+    }
+
+    Ok(())
+}

@@ -5,6 +5,7 @@
 // Linguist .ts XML file spec: https://doc.qt.io/qt-6/linguist-ts-file-format.html
 
 use std::fs;
+use std::ops;
 use std::path::PathBuf;
 use std::u64;
 
@@ -16,12 +17,31 @@ use quick_xml::se::SeError;
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesText, Event};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default, Serialize, PartialEq)]
 pub struct TsMessageStats {
     pub finished: u64,
     pub unfinished: u64,
     pub vanished: u64,
     pub obsolete: u64,
+}
+
+impl TsMessageStats {
+    pub fn completeness_percentage(&self) -> f64 {
+        let total = self.finished + self.unfinished;
+        if total == 0 {
+            return 0.0;
+        }
+        (self.finished as f64 / total as f64) * 100.0
+    }
+}
+
+impl ops::AddAssign<&Self> for TsMessageStats {
+    fn add_assign(&mut self, rhs: &Self) {
+        self.finished += rhs.finished;
+        self.unfinished += rhs.unfinished;
+        self.vanished += rhs.vanished;
+        self.obsolete += rhs.obsolete;
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -249,6 +269,7 @@ pub mod tests {
             unfinished: 1,
             vanished: 0,
             obsolete: 1,
-        })
+        });
+        assert_eq!(ts.get_message_stats().completeness_percentage(), 2.0 / 3.0 * 100.0);
     }
 }

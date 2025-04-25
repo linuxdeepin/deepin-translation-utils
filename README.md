@@ -5,6 +5,7 @@ A commandline tool to help you work with Qt Linguist-based translation files tha
 This program currently supports the following features:
 
 - Converts Chinese texts in Qt linguist TS file among regional variants.
+- Prints translation statistics of the provided project.
 
 ## Usage
 
