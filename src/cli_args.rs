@@ -43,7 +43,7 @@ pub enum Commands {
     #[command(name = "statistics")]
     #[command(
         about = "Prints translation statistics of the provided project",
-        long_about = "Prints translation statistics of the provided project according to transifex.yaml.\n\n\
+        long_about = "Prints translation statistics of the provided project according to transifex.yaml or .tx/config file.\n\n\
             Only Qt Linguist-based resources are processed, other resources like PO-based ones are ignored.",
     )]
     Statistics {

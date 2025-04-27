@@ -5,6 +5,7 @@
 mod cli_args;
 mod linguist_file;
 mod transifex_yaml_file;
+mod tx_config_file;
 mod subcmd_zhconv;
 mod subcmd_statistics;
 

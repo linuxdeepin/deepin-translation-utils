@@ -5,14 +5,14 @@
 use serde::Serialize;
 use thiserror::Error as TeError;
 use std::path::PathBuf;
-use crate::{linguist_file::*, transifex_yaml_file::*};
+use crate::{linguist_file::*, transifex_yaml_file::*, tx_config_file::*};
 
 #[derive(TeError, Debug)]
 pub enum CmdStatsError {
     #[error("Fail to load Qt Linguist TS file {0:?} because: {1}")]
     LoadSourceFile(PathBuf, #[source] TsLoadError),
-    #[error("Fail to load transifex.yaml because: {0}")]
-    LoadTxYamlFile(TxYamlLoadError),
+    #[error("Fail to load Transifex project file because: {0}")]
+    TxProjectFileLoadError(#[from] TxProjectFileLoadError),
     #[error("Fail to match resources because: {0}")]
     MatchResources(#[source] std::io::Error),
     #[error("Fail to serialize stats: {0}")]
@@ -121,10 +121,42 @@ struct TsResourceStats {
     stats: TsMessageStats,
 }
 
+#[derive(TeError, Debug)]
+pub enum TxProjectFileLoadError {
+    #[error("Fail to load transifex.yaml file because: {0}")]
+    TxYamlLoadError(#[from] TxYamlLoadError),
+    #[error("Fail to load .tx/config project file because: {0}")]
+    ConvertError(#[from] TxConfigLoadError),
+}
+
+fn try_laod_transifex_project_file(project_root: &PathBuf) -> Result<(PathBuf, TransifexYaml), TxProjectFileLoadError> {
+    // try find transifex.yaml in project_root/transifex.yaml and if not found, try project_root/.tx/transifex.yaml. If still not found, return error.
+    let transifex_yaml_file = project_root.join("transifex.yaml");
+    if transifex_yaml_file.is_file() {
+        let tx_yaml = load_tx_yaml_file(&transifex_yaml_file)?;
+        return Ok((transifex_yaml_file, tx_yaml));
+    }
+    let transifex_yaml_file = project_root.join(".tx").join("transifex.yaml");
+    if transifex_yaml_file.is_file() {
+        let tx_yaml = load_tx_yaml_file(&transifex_yaml_file)?;
+        return Ok((transifex_yaml_file, tx_yaml));
+    }
+
+    // also try .tx/config as well
+    let tx_config_file = project_root.join(".tx").join("config");
+    if tx_config_file.is_file() {
+        let tx_config = load_tx_config_file(&tx_config_file)?;
+        let tx_yaml = tx_config.to_transifex_yaml();
+        return Ok((tx_config_file, tx_yaml));
+    }
+
+    Err(TxProjectFileLoadError::TxYamlLoadError(TxYamlLoadError::FileNotFound))
+}
+
 pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: StatsSortBy) -> Result<(), CmdStatsError> {
-    let (transifex_yaml_file, tx_yaml) = try_load_tx_yaml_file(project_root).or_else(|e| { Err(CmdStatsError::LoadTxYamlFile(e)) })?;
+    let (transifex_yaml_file, tx_yaml) = try_laod_transifex_project_file(project_root)?;
     if matches!(format, StatsFormat::PlainTable) {
-        println!("Found transifex.yaml file at: {transifex_yaml_file:?}");
+        println!("Found Transifex project config file at: {transifex_yaml_file:?}");
     }
     let mut project_stats = ProjectResourceStats::default();
     project_stats.project_path = project_root.clone();

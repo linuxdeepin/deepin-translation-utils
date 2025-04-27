@@ -11,3 +11,4 @@ clap = { version = "4.5.37", features = ["derive"] }
 thiserror = { version = "2.0.12"}
 serde_yml = "0.0.12"
 regex = "1.11.1"
+configparser = "3.1.0"
