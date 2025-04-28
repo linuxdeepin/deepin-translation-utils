@@ -132,13 +132,10 @@ pub enum TxProjectFileLoadError {
 fn try_laod_transifex_project_file(project_root: &PathBuf) -> Result<(PathBuf, TransifexYaml), TxProjectFileLoadError> {
     // try find transifex.yaml in project_root/transifex.yaml and if not found, try project_root/.tx/transifex.yaml. If still not found, return error.
     try_laod_transifex_yaml_file(project_root).or_else(|e| {
-        let tx_config_file = project_root.join(".tx").join("config");
-        if tx_config_file.is_file() {
-            let tx_config = load_tx_config_file(&tx_config_file)?;
+        try_laod_tx_config_file(project_root).map(|(tx_config_file, tx_config)| {
             let tx_yaml = tx_config.to_transifex_yaml();
-            return Ok((tx_config_file, tx_yaml));
-        }
-        Err(TxProjectFileLoadError::TxYamlLoadError(e))
+            (tx_config_file, tx_yaml)
+        }).map_err(|_| TxProjectFileLoadError::TxYamlLoadError(e))
     })
 }
 

@@ -9,6 +9,7 @@ This program currently supports the following features:
 - Generates `.tx/config` based on Transifex GitHub integration `transifex.yaml` config file and Transifex API.
   - Transifex API is used to look up and match the resource slug.
   - Local cache can be used without making API request if the resource info data is already fetched previously.
+- Generates Transifex GitHub integration `transifex.yaml` based on `.tx/config`.
 
 ## Usage
 

@@ -27,6 +27,15 @@ pub struct TransifexRcSection {
     pub token: String,
 }
 
+pub fn try_laod_tx_config_file(project_root: &PathBuf) -> Result<(PathBuf, TxConfig), TxConfigLoadError> {
+    let tx_config_file = project_root.join(".tx").join("config");
+    if tx_config_file.is_file() {
+        let tx_config = load_tx_config_file(&tx_config_file)?;
+        return Ok((tx_config_file, tx_config));
+    }
+    Err(TxConfigLoadError::FileNotFound)
+}
+
 pub fn load_transifexrc_file(transifexrc_file: &PathBuf) -> Result<TransifexRcSection, TxConfigLoadError> {
     if !transifexrc_file.is_file() {
         return Err(TxConfigLoadError::FileNotFound);

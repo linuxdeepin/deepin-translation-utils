@@ -12,10 +12,9 @@ use thiserror::Error as TeError;
 
 use crate::tx_config_file::*;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TransifexYaml {
     pub filters: Vec<Filter>,
-    #[allow(dead_code)]
     pub settings: Settings,
 }
 
@@ -58,7 +57,7 @@ impl TransifexYaml {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Filter {
     #[serde(rename = "filter_type")]
     pub type_attr: String,
@@ -106,10 +105,9 @@ impl Filter {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Settings {
     #[serde(rename = "pr_branch_name")]
-    #[allow(dead_code)]
     pub branch_template: String,
 }
 

@@ -6,9 +6,10 @@
 
 - 将 Qt Linguist TS 文件中的中文文本转换为不同的区域变体（简转繁等）。
 - 统计并展示所提供的项目的翻译完成度。
-- 根据 Transifex GitHub 集成配置文件 `transifex.yaml` 以及 Transifex API 生成 `.tx/config`.
+- 根据 Transifex GitHub 集成配置文件 `transifex.yaml` 以及 Transifex API 生成 `.tx/config`。
   - Transifex API 用以查询和关联资源对应的 slug。
   - 如果对应的资源信息本地已有缓存，也可以使用对应的缓存信息而不进行 API 请求。
+- 根据 `.tx/config` 生成 Transifex GitHub 集成配置文件 `transifex.yaml`。
 
 ## 用法
 

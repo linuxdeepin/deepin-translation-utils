@@ -52,9 +52,21 @@ fn get_github_repository_from_user_input(project_root: &PathBuf, github_reposito
     }
 }
 
+fn create_rest_client_from_transifexrc_file(force_online: bool) -> TransifexRestApi {
+    let xdg_dirs = BaseDirs::new().expect("Not able to get xdg base directories");
+    let transifexrc_file = xdg_dirs.home_dir().join(".transifexrc");
+    if !transifexrc_file.exists() {
+        eprintln!("Warning: .transifexrc file not found, not able to fetch project resource list");
+        if force_online {
+            panic!("Force online mode, but .transifexrc file not found");
+        }
+    }
+    let transifexrc = load_transifexrc_file(&transifexrc_file).expect("Failed to load .transifexrc file");
+    TransifexRestApi::new(&transifexrc.rest_hostname, &transifexrc.token)
+}
+
 fn fetch_project_list(organization_slug: &str, force_online: bool) -> Vec<String> {
     let xdg_proj_dirs = ProjectDirs::from("", "deepin", "deepin-translation-utils").expect("Not able to get project directories");
-    let xdg_dirs = BaseDirs::new().expect("Not able to get xdg base directories");
     let cache_file = xdg_proj_dirs.cache_dir().join(format!("{organization_slug}.yaml"));
     
     if cache_file.exists() && !force_online {
@@ -62,12 +74,7 @@ fn fetch_project_list(organization_slug: &str, force_online: bool) -> Vec<String
         let list = serde_yml::from_str::<Vec<String>>(source_content.as_str()).expect("Failed to parse cached project list");
         return list;
     } else {
-        let transifexrc_file = xdg_dirs.home_dir().join(".transifexrc");
-        if !transifexrc_file.exists() {
-            eprintln!("Warning: {transifexrc_file:?} file not found, not able to fetch project list");
-        }
-        let transifexrc = load_transifexrc_file(&transifexrc_file).expect("Failed to load .transifexrc file");
-        let client = TransifexRestApi::new(&transifexrc.rest_hostname, &transifexrc.token);
+        let client = create_rest_client_from_transifexrc_file(force_online);
 
         println!("Fetching o:{organization_slug} project list from Transifex...");
         let entries = client.get_all_projects(organization_slug).expect("Failed to fetch project resource list");
@@ -102,7 +109,6 @@ fn parse_linked_resource_category(entry: TransifexData) -> Option<TxResourceLook
 
 fn fetch_resource_list(organization_slug: &str, project_slug: &str, force_online: bool) -> Vec<TxResourceLookupEntry> {
     let xdg_proj_dirs = ProjectDirs::from("", "deepin", "deepin-translation-utils").expect("Not able to get project directories");
-    let xdg_dirs = BaseDirs::new().expect("Not able to get xdg base directories");
     let cache_file = xdg_proj_dirs.cache_dir().join(format!("{organization_slug}/{project_slug}.yaml"));
     
     if cache_file.exists() && !force_online {
@@ -111,15 +117,7 @@ fn fetch_resource_list(organization_slug: &str, project_slug: &str, force_online
         let list = serde_yml::from_str::<Vec<TxResourceLookupEntry>>(source_content.as_str()).expect("Failed to parse cached project resource list");
         return list;
     } else {
-        let transifexrc_file = xdg_dirs.home_dir().join(".transifexrc");
-        if !transifexrc_file.exists() {
-            eprintln!("Warning: .transifexrc file not found, not able to fetch project resource list");
-            if force_online {
-                panic!("Force online mode, but .transifexrc file not found");
-            }
-        }
-        let transifexrc = load_transifexrc_file(&transifexrc_file).expect("Failed to load .transifexrc file");
-        let client = TransifexRestApi::new(&transifexrc.rest_hostname, &transifexrc.token);
+        let client = create_rest_client_from_transifexrc_file(force_online);
 
         println!("Fetching o:{organization_slug}:p:{project_slug} project resource list from Transifex...");
         let entries = client.get_all_linked_resources(organization_slug, project_slug).expect("Failed to fetch project resource list");

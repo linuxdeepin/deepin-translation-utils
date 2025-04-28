@@ -10,11 +10,13 @@ mod transifex_rest_api;
 mod subcmd_zhconv;
 mod subcmd_statistics;
 mod subcmd_yaml2txconfig;
+mod subcmd_txconfig2yaml;
 
 use crate::cli_args::*;
 use crate::subcmd_zhconv::*;
 use crate::subcmd_statistics::*;
 use crate::subcmd_yaml2txconfig::*;
+use crate::subcmd_txconfig2yaml::*;
 
 use clap::Parser;
 
@@ -46,5 +48,11 @@ fn main() {
                 std::process::exit(1);
             })
         },
+        Commands::TxConfig2Yaml { project_root } => {
+            subcmd_txconfig2yaml(&project_root).unwrap_or_else(|err| {
+                eprintln!("\x1B[31m{0}\x1B[0m", err);
+                std::process::exit(1);
+            })
+        }
     }
 }

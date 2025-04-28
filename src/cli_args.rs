@@ -75,4 +75,11 @@ pub enum Commands {
         #[arg(short, long, default_value = None)]
         project_slug: Option<String>,
     },
+    #[command(name = "txconfig2yaml")]
+    #[command(
+        about = "Generate transifex.yaml based on .tx/config",
+    )]
+    TxConfig2Yaml {
+        project_root: PathBuf,
+    },
 }
