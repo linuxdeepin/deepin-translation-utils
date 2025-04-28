@@ -52,5 +52,27 @@ pub enum Commands {
         format: crate::subcmd_statistics::StatsFormat,
         #[clap(short, long, default_value_t, value_enum)]
         sort_by: crate::subcmd_statistics::StatsSortBy,
-    }
+    },
+    #[command(name = "yaml2txconfig")]
+    #[command(
+        about = "Generate .tx/config based on transifex.yaml",
+        long_about = "Generate .tx/config based on transifex.yaml\n\n\
+            Missing resource slugs will be looked-up via API or local cached data.",
+    )]
+    Yaml2TxConfig {
+        project_root: PathBuf,
+        /// Force to fetch the resource slugs via Transifex REST API, and update local cache.
+        #[clap(short, long, action = clap::ArgAction::SetTrue, default_value_t = false)]
+        force_online: bool,
+        /// GitHub repository name in owner/repo format. e.g. linuxdeepin/dde-control-center
+        #[arg(short, long)]
+        github_repository: Option<String>,
+        /// organization slug of the project on Transifex platform
+        #[arg(short, long, default_value = "linuxdeepin")]
+        organization_slug: String,
+        /// project slug of the project on Transifex platform.
+        /// If not provided, it will lookup all projects under the organization slug.
+        #[arg(short, long, default_value = None)]
+        project_slug: Option<String>,
+    },
 }

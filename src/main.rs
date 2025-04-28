@@ -6,12 +6,15 @@ mod cli_args;
 mod linguist_file;
 mod transifex_yaml_file;
 mod tx_config_file;
+mod transifex_rest_api;
 mod subcmd_zhconv;
 mod subcmd_statistics;
+mod subcmd_yaml2txconfig;
 
 use crate::cli_args::*;
 use crate::subcmd_zhconv::*;
 use crate::subcmd_statistics::*;
+use crate::subcmd_yaml2txconfig::*;
 
 use clap::Parser;
 
@@ -36,6 +39,12 @@ fn main() {
                 eprintln!("\x1B[31m{0}\x1B[0m", err);
                 std::process::exit(1);
             });
-        }
+        },
+        Commands::Yaml2TxConfig { project_root, force_online, github_repository, organization_slug, project_slug } => {
+            subcmd_yaml2txconfig(&project_root, force_online, github_repository, organization_slug, project_slug).unwrap_or_else(|err| {
+                eprintln!("\x1B[31m{0}\x1B[0m", err);
+                std::process::exit(1);
+            })
+        },
     }
 }

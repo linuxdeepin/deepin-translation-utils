@@ -7,15 +7,55 @@
 use std::{fs, path::PathBuf};
 
 use regex::Regex;
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use thiserror::Error as TeError;
-use crate::tx_config_file::TxConfigLoadError;
+
+use crate::tx_config_file::*;
 
 #[derive(Debug, Deserialize)]
 pub struct TransifexYaml {
     pub filters: Vec<Filter>,
     #[allow(dead_code)]
     pub settings: Settings,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TxResourceLookupEntry {
+    pub repository: String,
+    pub branch: String, // git branch name, not transifex branch name
+    pub resource: String,
+    pub transifex_resource_id: String, // full slug, i.e. `o:org:p:proj:r:res`
+}
+
+impl TransifexYaml {
+    pub fn to_tx_config(&self, github_repository: String, lookup_table: Vec<TxResourceLookupEntry>) -> TxConfig {
+        let mut resource_sections = Vec::<TxConfigSectionResource>::new();
+        for filter in &self.filters {
+            let mut resource_section = TxConfigSectionResource::default();
+            resource_section.source_file = filter.source.clone();
+            resource_section.source_lang = filter.source_lang.clone();
+            resource_section.type_attr = filter.format.clone();
+            resource_section.file_filter = filter.target_pattern.clone();
+
+            // from lookup table, find if we have resource have the same repository and resource name
+            if let Some(lookup_entry) = lookup_table.iter().find(|entry| {
+                entry.repository == github_repository && entry.resource == filter.source
+            }) {
+                resource_section.resource_full_slug = lookup_entry.transifex_resource_id.clone();
+            } else {
+                resource_section.resource_full_slug = format!("o:{}:p:{}:r:{}", "unknown-org", "unknown-proj", "unknown-res")
+            }
+            
+            resource_sections.push(resource_section);
+        };
+        TxConfig {
+            main_section: TxConfigSectionMain {
+                host: "https://www.transifex.com".to_string(),
+                ..TxConfigSectionMain::default()
+            },
+            resource_sections,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -83,6 +123,22 @@ pub enum TxYamlLoadError {
     Serde(#[from] serde_yml::Error),
     #[error("Fail to convert from .tx/config file: {0:?}")]
     ConvertError(#[from] TxConfigLoadError),
+}
+
+pub fn try_laod_transifex_yaml_file(project_root: &PathBuf) -> Result<(PathBuf, TransifexYaml), TxYamlLoadError> {
+    // try find transifex.yaml in project_root/transifex.yaml and if not found, try project_root/.tx/transifex.yaml. If still not found, return error.
+    let transifex_yaml_file = project_root.join("transifex.yaml");
+    if transifex_yaml_file.is_file() {
+        let tx_yaml = load_tx_yaml_file(&transifex_yaml_file)?;
+        return Ok((transifex_yaml_file, tx_yaml));
+    }
+    let transifex_yaml_file = project_root.join(".tx").join("transifex.yaml");
+    if transifex_yaml_file.is_file() {
+        let tx_yaml = load_tx_yaml_file(&transifex_yaml_file)?;
+        return Ok((transifex_yaml_file, tx_yaml));
+    }
+
+    Err(TxYamlLoadError::FileNotFound)
 }
 
 pub fn load_tx_yaml_file(transifex_yaml_file: &PathBuf) -> Result<TransifexYaml, TxYamlLoadError> {

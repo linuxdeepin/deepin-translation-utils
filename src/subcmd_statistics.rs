@@ -131,26 +131,15 @@ pub enum TxProjectFileLoadError {
 
 fn try_laod_transifex_project_file(project_root: &PathBuf) -> Result<(PathBuf, TransifexYaml), TxProjectFileLoadError> {
     // try find transifex.yaml in project_root/transifex.yaml and if not found, try project_root/.tx/transifex.yaml. If still not found, return error.
-    let transifex_yaml_file = project_root.join("transifex.yaml");
-    if transifex_yaml_file.is_file() {
-        let tx_yaml = load_tx_yaml_file(&transifex_yaml_file)?;
-        return Ok((transifex_yaml_file, tx_yaml));
-    }
-    let transifex_yaml_file = project_root.join(".tx").join("transifex.yaml");
-    if transifex_yaml_file.is_file() {
-        let tx_yaml = load_tx_yaml_file(&transifex_yaml_file)?;
-        return Ok((transifex_yaml_file, tx_yaml));
-    }
-
-    // also try .tx/config as well
-    let tx_config_file = project_root.join(".tx").join("config");
-    if tx_config_file.is_file() {
-        let tx_config = load_tx_config_file(&tx_config_file)?;
-        let tx_yaml = tx_config.to_transifex_yaml();
-        return Ok((tx_config_file, tx_yaml));
-    }
-
-    Err(TxProjectFileLoadError::TxYamlLoadError(TxYamlLoadError::FileNotFound))
+    try_laod_transifex_yaml_file(project_root).or_else(|e| {
+        let tx_config_file = project_root.join(".tx").join("config");
+        if tx_config_file.is_file() {
+            let tx_config = load_tx_config_file(&tx_config_file)?;
+            let tx_yaml = tx_config.to_transifex_yaml();
+            return Ok((tx_config_file, tx_yaml));
+        }
+        Err(TxProjectFileLoadError::TxYamlLoadError(e))
+    })
 }
 
 pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: StatsSortBy) -> Result<(), CmdStatsError> {
