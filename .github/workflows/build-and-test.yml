@@ -11,7 +11,6 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-24.04
     strategy:
       matrix:
@@ -26,5 +25,26 @@ jobs:
     - name: Upload release artifact
       uses: actions/upload-artifact@v4
       with:
-        name: deepin-translation-utils
+        name: deepin-translation-utils-ubuntu-24.04-amd64
         path: target/${{ matrix.BUILD_TARGET }}/deepin-translation-utils
+
+
+  cross-build:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        BUILD_TARGET: [release]
+        BUILD_TRIPLE: [x86_64-unknown-linux-gnu]
+        GLIBC_VERSION: [2.28]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install cargo-zigbuild via pip
+      run: pip install cargo-zigbuild
+    - name: Cross Build
+      run: cargo zigbuild --profile ${{ matrix.BUILD_TARGET }} --verbose --target ${{ matrix.BUILD_TRIPLE }}.${{ matrix.GLIBC_VERSION }} --features openssl/vendored
+    - name: Upload release artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: deepin-translation-utils-${{ matrix.BUILD_TRIPLE }}.${{ matrix.GLIBC_VERSION }}
+        path: target/${{ matrix.BUILD_TRIPLE }}/${{ matrix.BUILD_TARGET }}/deepin-translation-utils
