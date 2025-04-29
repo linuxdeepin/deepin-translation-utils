@@ -42,7 +42,7 @@ jobs:
     - name: Install cargo-zigbuild via pip
       run: pip install cargo-zigbuild
     - name: Cross Build
-      run: cargo zigbuild --profile ${{ matrix.BUILD_TARGET }} --verbose --target ${{ matrix.BUILD_TRIPLE }}.${{ matrix.GLIBC_VERSION }} --features openssl/vendored
+      run: cargo zigbuild --profile ${{ matrix.BUILD_TARGET }} --verbose --target ${{ matrix.BUILD_TRIPLE }}.${{ matrix.GLIBC_VERSION }}
     - name: Upload release artifact
       uses: actions/upload-artifact@v4
       with:
