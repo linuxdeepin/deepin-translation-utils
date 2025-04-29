@@ -1,3 +1,4 @@
+use core::panic;
 use std::fs;
 use std::path::PathBuf;
 use std::io::stdin;
@@ -15,40 +16,34 @@ pub enum CmdY2TCError {
 }
 
 fn get_github_repository_from_user_input(project_root: &PathBuf, github_repository_hint: Option<String>) -> String {
+    let project_root = fs::canonicalize(project_root).unwrap_or(project_root.to_path_buf());
     let mut repo_name = match github_repository_hint {
-        Some(_) => github_repository_hint,
-        None => project_root.file_name().and_then(|name| name.to_str().map(ToOwned::to_owned)),
+        Some(github_repository_hint_name) => github_repository_hint_name,
+        None => project_root.file_name().and_then(|name| name.to_str().map(ToOwned::to_owned)).unwrap_or(String::new()),
     };
 
     loop {
-        if let Some(ref name) = repo_name {
-            if name.contains('/') && name.split('/').count() == 2 {
-                return name.to_string();
-            }
+        if repo_name.contains('/') && repo_name.split('/').count() == 2 {
+            return repo_name.to_string();
         }
 
-        repo_name = match repo_name {
-            Some(ref name) => {
-                let github_repository = format!("{}/{}", "linuxdeepin", name);
-                println!("Is {github_repository:?} your GitHub repo name?\n- If yes, simply press Enter.\n- If not, please enter the repo name in owner/repo format: ");
-                let mut user_input = String::new();
-                match stdin().read_line(&mut user_input) {
-                    Ok(_) => {
-                        let user_input = user_input.trim();
-                        if user_input.is_empty() {
-                            Some(github_repository)
-                        } else {
-                            Some(user_input.to_string())
-                        }
-                    },
-                    Err(_) => {
-                        println!("Failed to read user input.");
-                        None
-                    }
+        let github_repository = format!("{}/{}", "linuxdeepin", repo_name);
+        println!("Is {github_repository:?} your GitHub repo name?\n- If yes, simply press Enter.\n- If not, please enter the repo name in owner/repo format: ");
+        let mut user_input = String::new();
+        repo_name = match stdin().read_line(&mut user_input) {
+            Ok(_) => {
+                let user_input = user_input.trim();
+                if user_input.is_empty() {
+                    github_repository
+                } else {
+                    user_input.to_string().trim().to_owned()
                 }
             },
-            None => None,
-        };
+            Err(_) => {
+                println!("Failed to read user input.");
+                panic!();
+            }
+        }
     }
 }
 
