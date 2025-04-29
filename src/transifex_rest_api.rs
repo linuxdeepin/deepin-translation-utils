@@ -8,7 +8,6 @@ use serde::Deserialize;
 use thiserror::Error as TeError;
 
 pub struct TransifexRestApi {
-    client: reqwest::blocking::Client,
     rest_hostname: String,
     token: String,
 }
@@ -16,7 +15,7 @@ pub struct TransifexRestApi {
 #[derive(TeError, Debug)]
 pub enum TransifexRestApiError {
     #[error("Error making request: {0}")]
-    ReqwestError(#[from] reqwest::Error),
+    UreqError(#[from] ureq::Error),
     #[error("Error parsing response: {0}")]
     SerdeError(#[from] serde_json::Error),
 }
@@ -65,9 +64,7 @@ struct TransifexPaginationLinks {
 
 impl TransifexRestApi {
     pub fn new(rest_hostname: &str, token: &str) -> Self {
-        let client = reqwest::blocking::Client::new();
         Self {
-            client,
             rest_hostname: rest_hostname.to_string(),
             token: token.to_string(),
         }
@@ -77,13 +74,10 @@ impl TransifexRestApi {
         let mut all_items = Vec::<T>::new();
         let mut next_page_url = Some(self.rest_hostname.clone() + url);
         while let Some(url) = next_page_url {
-            let resp = self.client.get(&url)
-                .header("Authorization", format!("Bearer {}", self.token))
-                .send()?;
-            if resp.status() != 200 {
-                return Err(TransifexRestApiError::ReqwestError(resp.error_for_status().unwrap_err()));
-            }
-            let resp_text = resp.text()?;
+            let mut resp = ureq::get(&url)
+                .header("Authorization", &format!("Bearer {}", self.token))
+                .call()?;
+            let resp_text = resp.body_mut().read_to_string()?;
             let resp_json = serde_json::from_str::<TransifexPaginationResponse<T>>(&resp_text)?;
             let next_url = resp_json.next_page_url().map(|s| s.to_string());
             all_items.extend(resp_json.items());
