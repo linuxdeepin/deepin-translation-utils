@@ -1,10 +1,10 @@
 # deepin-translation-utils
 
-A commandline tool to help you work with Qt Linguist-based translation files that are used in deepin's workflow.
+A commandline tool to help you work with Qt Linguist-based and Gettext-based translation files, and Transifex platform-related configurations that are used in deepin's workflow.
 
 This program currently supports the following features:
 
-- Converts Chinese texts in Qt linguist TS file among regional variants.
+- Converts Chinese texts in Qt linguist TS file or GNU Gettext PO file among regional variants.
 - Prints translation statistics of the provided project.
 - Generates `.tx/config` based on Transifex GitHub integration `transifex.yaml` config file and Transifex API.
   - Transifex API is used to look up and match the resource slug.

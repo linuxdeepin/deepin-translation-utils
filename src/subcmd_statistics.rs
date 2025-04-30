@@ -5,12 +5,15 @@
 use serde::Serialize;
 use thiserror::Error as TeError;
 use std::path::PathBuf;
+use polib::po_file;
 use crate::{linguist_file::*, transifex_yaml_file::*, tx_config_file::*};
 
 #[derive(TeError, Debug)]
 pub enum CmdStatsError {
     #[error("Fail to load Qt Linguist TS file {0:?} because: {1}")]
     LoadSourceFile(PathBuf, #[source] TsLoadError),
+    #[error("Fail to load Gettext PO/POT file {0:?} because: {1}")]
+    LoadPoFileError(PathBuf, #[source] po_file::POParseError),
     #[error("Fail to load Transifex project file because: {0}")]
     TxProjectFileLoadError(#[from] TxProjectFileLoadError),
     #[error("Fail to match resources because: {0}")]
@@ -38,6 +41,31 @@ struct ProjectResourceStats {
     project_path: PathBuf,
     target_lang_codes: Vec<String>,
     resource_groups: Vec<TsResourceGroupStats>,
+}
+
+fn load_file_stats(file_path: &PathBuf) -> Result<TsMessageStats, CmdStatsError> {
+    match file_path.extension().and_then(|e| e.to_str()) {
+        Some("ts") => {
+            let ts = load_ts_file(file_path)
+                .map_err(|e| {CmdStatsError::LoadSourceFile(file_path.clone(), e)})?;
+            Ok(ts.get_message_stats())
+        }
+        Some("po") | Some("pot") => {
+            let po_catalog = po_file::parse(file_path).map_err(|e| {CmdStatsError::LoadPoFileError(file_path.clone(), e)})?;
+            let mut stats = TsMessageStats::default();
+            for message in po_catalog.messages() {
+                if message.is_translated() {
+                    stats.finished += 1;
+                } else {
+                    stats.unfinished += 1;
+                }
+            }
+            Ok(stats)
+        }
+        _ => {
+            Err(CmdStatsError::LoadSourceFile(file_path.clone(), TsLoadError::FileNotFound))
+        }
+    }
 }
 
 impl ProjectResourceStats {
@@ -148,7 +176,7 @@ pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: S
     project_stats.project_path = project_root.clone();
 
     for filter in &tx_yaml.filters {
-        if filter.format != "QT" || filter.type_attr != "file" {
+        if (filter.format != "QT" && filter.format != "PO") || filter.type_attr != "file" {
             if matches!(format, StatsFormat::PlainTable) {
                 println!("Skipping resource {:?} with format {:?}...", filter.source, filter.format);
             }
@@ -161,22 +189,20 @@ pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: S
             if matches!(format, StatsFormat::PlainTable) {
                 println!("Hit source file at: {source_file:?}");
             }
-            let ts_content = load_ts_file(&source_file)
-                .or_else(|e| { Err(CmdStatsError::LoadSourceFile(source_file.clone(), e)) })?;
+            let content_stats = load_file_stats(&source_file)?;
             source_group_stats.source_path = source_file.clone();
             source_group_stats.source_lang_code = filter.source_lang.clone();
-            source_group_stats.source_stats = ts_content.get_message_stats();
+            source_group_stats.source_stats = content_stats;
         } else {
             continue;
         }
 
         let matched_resources = filter.match_target_files(project_root).or_else(|e| { Err(CmdStatsError::MatchResources(e)) })?;
         for (lang, target_file) in matched_resources {
-            let ts_content = load_ts_file(&target_file)
-                .or_else(|e| { Err(CmdStatsError::LoadSourceFile(target_file.clone(), e)) })?;
+            let content_stats = load_file_stats(&target_file)?;
             let target_resource_stats = TsResourceStats {
                 resource_path: target_file.clone(),
-                stats: ts_content.get_message_stats(),
+                stats: content_stats,
             };
             source_group_stats.target_lang_codes.push(lang.clone());
             if !project_stats.target_lang_codes.contains(&lang) {
