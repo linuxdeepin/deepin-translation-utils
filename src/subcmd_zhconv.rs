@@ -52,7 +52,7 @@ trait ZhConvertible {
     fn load_or_create_target_file(&self, file_path: &PathBuf, fallback_language_code: &String) -> Result<Self::T, CmdError>;
     fn language(&self) -> Option<String>;
     fn set_language(&mut self, language_code: &String);
-    fn translate_content_based_on(&mut self, reference_content: &Self) -> Result<(), CmdError>;
+    fn translate_content_based_on(&mut self, reference_content: &Self::T) -> Result<(), CmdError>;
     fn save_file(&self, file_path: &PathBuf) -> Result<(), CmdError>;
 }
 

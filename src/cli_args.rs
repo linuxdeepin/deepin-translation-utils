@@ -13,6 +13,10 @@ pub struct Cli {
 }
 
 #[derive(Debug, Subcommand)]
+#[command(
+    version = env!("GIT_DESCRIBE_OR_CARGO_PKG_VERSION"),
+    about = "A commandline tool to help you work with translation files and Transifex configurations."
+)]
 pub enum Commands {
     #[command(name = "zhconv")]
     #[command(

@@ -18,6 +18,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
     - name: Build
       run: cargo build --profile ${{ matrix.BUILD_TARGET }} --verbose
     - name: Run tests
@@ -39,6 +42,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
     - name: Install cargo-zigbuild via pip
       run: pip install cargo-zigbuild
     - name: Cross Build
