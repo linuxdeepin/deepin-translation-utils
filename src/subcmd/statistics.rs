@@ -4,19 +4,20 @@
 
 use serde::Serialize;
 use thiserror::Error as TeError;
-use std::path::PathBuf;
-use polib::po_file;
-use crate::linguist_file::*;
+use std::path::{Path, PathBuf};
 use crate::transifex::{yaml_file::*, tx_config_file::*};
+use crate::i18n_file::{self, common::{MessageStats, I18nFileKind}};
 
 #[derive(TeError, Debug)]
-pub enum CmdStatsError {
+pub enum CmdError {
+    #[error("Can not guess translation file kind from path {0:?} because: {1}")]
+    GuessI18nFileType(PathBuf, #[source] i18n_file::common::UnknownI18nFileExtError),
     #[error("Fail to load Qt Linguist TS file {0:?} because: {1}")]
-    LoadSourceFile(PathBuf, #[source] TsLoadError),
+    LoadTsFile(PathBuf, #[source] i18n_file::linguist::TsLoadError),
     #[error("Fail to load Gettext PO/POT file {0:?} because: {1}")]
-    LoadPoFileError(PathBuf, #[source] po_file::POParseError),
+    LoadPoError(PathBuf, #[source] i18n_file::gettext::PoLoadError),
     #[error("Fail to load Transifex project file because: {0}")]
-    TxProjectFileLoadError(#[from] TxProjectFileLoadError),
+    LoadTxProjectFile(#[from] TxProjectFileLoadError),
     #[error("Fail to match resources because: {0}")]
     MatchResources(#[source] std::io::Error),
     #[error("Fail to serialize stats: {0}")]
@@ -44,35 +45,24 @@ struct ProjectResourceStats {
     resource_groups: Vec<TsResourceGroupStats>,
 }
 
-fn load_file_stats(file_path: &PathBuf) -> Result<TsMessageStats, CmdStatsError> {
-    match file_path.extension().and_then(|e| e.to_str()) {
-        Some("ts") => {
-            let ts = load_ts_file(file_path)
-                .map_err(|e| {CmdStatsError::LoadSourceFile(file_path.clone(), e)})?;
-            Ok(ts.get_message_stats())
-        }
-        Some("po") | Some("pot") => {
-            let po_catalog = po_file::parse(file_path).map_err(|e| {CmdStatsError::LoadPoFileError(file_path.clone(), e)})?;
-            let mut stats = TsMessageStats::default();
-            for message in po_catalog.messages() {
-                if message.is_translated() {
-                    stats.finished += 1;
-                } else {
-                    stats.unfinished += 1;
-                }
-            }
-            Ok(stats)
-        }
-        _ => {
-            Err(CmdStatsError::LoadSourceFile(file_path.clone(), TsLoadError::FileNotFound))
-        }
-    }
+fn load_file_stats(file_path: &Path) -> Result<MessageStats, CmdError> {
+    let kind = i18n_file::common::I18nFileKind::from_ext_hint(&file_path)
+        .map_err(|e| CmdError::GuessI18nFileType(file_path.to_path_buf(), e))?;
+
+    Ok(match kind {
+        I18nFileKind::Linguist => i18n_file::linguist::Ts::load_from_file(&file_path)
+            .map_err(|e| CmdError::LoadTsFile(file_path.to_path_buf(), e))?
+            .get_message_stats(),
+        I18nFileKind::Gettext => i18n_file::gettext::Po::load_from_file(&file_path)
+            .map_err(|e| CmdError::LoadPoError(file_path.to_path_buf(), e))?
+            .get_message_stats(),
+    })
 }
 
 impl ProjectResourceStats {
-    pub fn get_source_stats(&self) -> (i32, TsMessageStats) {
+    pub fn get_source_stats(&self) -> (i32, MessageStats) {
         let mut total_resources = 0;
-        let mut total_stats = TsMessageStats::default();
+        let mut total_stats = MessageStats::default();
         for resource_group in &self.resource_groups {
             total_stats += &resource_group.source_stats;
             total_resources += 1;
@@ -80,9 +70,9 @@ impl ProjectResourceStats {
         (total_resources, total_stats)
     }
 
-    pub fn get_target_stats_by_language_code(&self, language_code: &String) -> (i32, TsMessageStats) {
+    pub fn get_target_stats_by_language_code(&self, language_code: &String) -> (i32, MessageStats) {
         let mut total_resources = 0;
-        let mut total_stats = TsMessageStats::default();
+        let mut total_stats = MessageStats::default();
         for resource_group in &self.resource_groups {
             if let Some(target_stats) = resource_group.target_stats.get(language_code) {
                 total_stats += &target_stats.stats;
@@ -139,7 +129,7 @@ impl ProjectResourceStats {
 struct TsResourceGroupStats {
     source_path: PathBuf,
     source_lang_code: String,
-    source_stats: TsMessageStats,
+    source_stats: MessageStats,
     target_lang_codes: Vec<String>,
     target_stats: std::collections::HashMap<String, TsResourceStats>,
 }
@@ -147,7 +137,7 @@ struct TsResourceGroupStats {
 #[derive(Default, Serialize)]
 struct TsResourceStats {
     resource_path: PathBuf,
-    stats: TsMessageStats,
+    stats: MessageStats,
 }
 
 #[derive(TeError, Debug)]
@@ -170,7 +160,7 @@ fn try_laod_transifex_project_file(project_root: &PathBuf) -> Result<(PathBuf, T
     })
 }
 
-pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: StatsSortBy) -> Result<(), CmdStatsError> {
+pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: StatsSortBy) -> Result<(), CmdError> {
     let (transifex_yaml_file, tx_yaml) = try_laod_transifex_project_file(project_root)?;
     if matches!(format, StatsFormat::PlainTable) {
         println!("Found Transifex project config file at: {transifex_yaml_file:?}");
@@ -203,7 +193,7 @@ pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: S
             continue;
         }
 
-        let matched_resources = filter.match_target_files(project_root).or_else(|e| { Err(CmdStatsError::MatchResources(e)) })?;
+        let matched_resources = filter.match_target_files(project_root).or_else(|e| { Err(CmdError::MatchResources(e)) })?;
         for (lang, target_file) in matched_resources {
             let content_stats = load_file_stats(&target_file)?;
             let target_resource_stats = TsResourceStats {

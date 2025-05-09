@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: MIT
 
-pub mod cli;
-pub mod i18n_file;
-pub mod transifex;
-pub mod subcmd;
+pub mod common;
+pub mod linguist;
+pub mod gettext;
