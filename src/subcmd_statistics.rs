@@ -194,6 +194,9 @@ pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: S
             source_group_stats.source_lang_code = filter.source_lang.clone();
             source_group_stats.source_stats = content_stats;
         } else {
+            if matches!(format, StatsFormat::PlainTable) {
+                println!("Missing source resource: {source_file:?}");
+            }
             continue;
         }
 

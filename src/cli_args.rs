@@ -20,8 +20,8 @@ pub struct Cli {
 pub enum Commands {
     #[command(name = "zhconv")]
     #[command(
-        about = "Converts Chinese texts in Qt linguist TS file among regional variants",
-        long_about = "Converts given Qt linguist TS file among traditional/simplified scripts or regional variants.\n\n\
+        about = "Converts Chinese texts in Qt Linguist or GNU Gettext file among regional variants",
+        long_about = "Converts given Qt Linguist (.ts) file or GNU Gettext (.po) file among traditional/simplified scripts or regional variants.\n\n\
             Converted files are written to the same directory as the original file with the same name but with different language code suffix to the file name.",
     )]
     ZhConv {
