@@ -2,8 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use thiserror::Error as TeError;
 
-use crate::transifex_yaml_file::*;
-use crate::tx_config_file::*;
+use crate::transifex::{yaml_file::*, tx_config_file::*};
 
 #[derive(TeError, Debug)]
 pub enum CmdTC2YError {

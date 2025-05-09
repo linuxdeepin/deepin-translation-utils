@@ -10,7 +10,7 @@ use regex::Regex;
 use serde::{Serialize, Deserialize};
 use thiserror::Error as TeError;
 
-use crate::tx_config_file::*;
+use super::tx_config_file::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TransifexYaml {
@@ -21,9 +21,11 @@ pub struct TransifexYaml {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TxResourceLookupEntry {
     pub repository: String,
-    pub branch: String, // git branch name, not transifex branch name
+    /// Git branch name, not transifex branch name
+    pub branch: String,
     pub resource: String,
-    pub transifex_resource_id: String, // full slug, i.e. `o:org:p:proj:r:res`
+    /// Full slug, i.e. `o:org:p:proj:r:res`
+    pub transifex_resource_id: String,
 }
 
 impl TransifexYaml {

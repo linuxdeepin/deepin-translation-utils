@@ -4,6 +4,7 @@
 
 use std::path::PathBuf;
 use clap::{Parser, Subcommand};
+use thiserror::Error as TeError;
 
 
 #[derive(Debug, Parser)]
@@ -53,9 +54,9 @@ pub enum Commands {
     Statistics {
         project_root: PathBuf,
         #[clap(short, long, default_value_t, value_enum)]
-        format: crate::subcmd_statistics::StatsFormat,
+        format: crate::subcmd::statistics::StatsFormat,
         #[clap(short, long, default_value_t, value_enum)]
-        sort_by: crate::subcmd_statistics::StatsSortBy,
+        sort_by: crate::subcmd::statistics::StatsSortBy,
     },
     #[command(name = "yaml2txconfig")]
     #[command(
@@ -86,4 +87,38 @@ pub enum Commands {
     TxConfig2Yaml {
         project_root: PathBuf,
     },
+}
+
+#[derive(TeError, Debug)]
+#[error("{0}")]
+pub enum CliError {
+    ZhConv(#[from] crate::subcmd::zhconv::CmdError),
+    Statistics(#[from] crate::subcmd::statistics::CmdStatsError),
+    Yaml2TxConfig(#[from] crate::subcmd::yaml2txconfig::CmdY2TCError),
+    TxConfig2Yaml(#[from] crate::subcmd::txconfig2yaml::CmdTC2YError),
+}
+
+pub fn execute() -> Result<(), CliError> {
+    let args = Cli::parse();
+
+    use crate::subcmd;
+    match args.command {
+        Commands::ZhConv { source_language, target_languages, linguist_ts_file } => {
+            subcmd::subcmd_zhconv(source_language, target_languages, linguist_ts_file)?;
+        },
+        Commands::ZhConvPlain { target_languages, content } => {
+            subcmd::subcmd_zhconv_plain(target_languages, content)?;
+        },
+        Commands::Statistics { project_root, format, sort_by} => {
+            subcmd::subcmd_statistics(&project_root, format, sort_by)?;
+        },
+        Commands::Yaml2TxConfig { project_root, force_online, github_repository, organization_slug, project_slug } => {
+            subcmd::subcmd_yaml2txconfig(&project_root, force_online, github_repository, organization_slug, project_slug)?;
+        },
+        Commands::TxConfig2Yaml { project_root } => {
+            subcmd::subcmd_txconfig2yaml(&project_root)?;
+        }
+    }
+
+    Ok(())
 }

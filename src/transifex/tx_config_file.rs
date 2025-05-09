@@ -8,7 +8,7 @@
 use std::{fs, path::PathBuf};
 use configparser::ini::{Ini, WriteOptions};
 use thiserror::Error as TeError;
-use crate::transifex_yaml_file::{self, TransifexYaml};
+use super::yaml_file::{self, TransifexYaml};
 
 #[derive(TeError, Debug)]
 pub enum TxConfigLoadError {
@@ -138,9 +138,9 @@ impl TxConfig {
     }
 
     pub fn to_transifex_yaml(&self) -> TransifexYaml {
-        let mut filters = Vec::<transifex_yaml_file::Filter>::new();
+        let mut filters = Vec::<yaml_file::Filter>::new();
         for resource_section in &self.resource_sections {
-            let filter = transifex_yaml_file::Filter {
+            let filter = yaml_file::Filter {
                 type_attr: "file".to_string(),
                 source: resource_section.source_file.clone(),
                 format: resource_section.type_attr.clone(),
@@ -151,7 +151,7 @@ impl TxConfig {
         };
         TransifexYaml {
             filters,
-            settings: transifex_yaml_file::Settings {
+            settings: yaml_file::Settings {
                 branch_template: "transifex_update_<br_unique_id>".to_string()
             }
         }
@@ -219,6 +219,10 @@ source_lang = en
 type = QT
 "#;
 
+    fn normalize_eol(s: &str) -> String {
+        s.replace("\r\n", "\n")
+    }
+
     #[test]
     fn tst_parse_transifexrc_content() {
         let transifexrc = TransifexRcSection::from_str(TEST_TRANSIFEXRC_CONTENT).unwrap();
@@ -252,6 +256,6 @@ type = QT
         assert_eq!(tx_config.resource_sections[1].source_file, "translations/desktop/desktop.ts");
         assert_eq!(tx_config.resource_sections[1].source_lang, "en");
         let content = tx_config.to_str();
-        assert_eq!(content, TEST_TX_CONFIG_CONTENT);
+        assert_eq!(normalize_eol(&content), TEST_TX_CONFIG_CONTENT);
     }
 }

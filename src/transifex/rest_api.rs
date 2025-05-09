@@ -27,7 +27,9 @@ pub struct TransifexDataAttributes {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct TransifexData {
-    pub id: String, // format: o:organization_slug:p:project_slug:r:resource_slug
+    /// This field should follow format:
+    /// `o:organization_slug:p:project_slug:r:resource_slug`
+    pub id: String,
     pub attributes: TransifexDataAttributes,
 }
 
