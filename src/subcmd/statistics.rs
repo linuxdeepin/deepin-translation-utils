@@ -6,7 +6,8 @@ use serde::Serialize;
 use thiserror::Error as TeError;
 use std::path::PathBuf;
 use polib::po_file;
-use crate::{linguist_file::*, transifex_yaml_file::*, tx_config_file::*};
+use crate::linguist_file::*;
+use crate::transifex::{yaml_file::*, tx_config_file::*};
 
 #[derive(TeError, Debug)]
 pub enum CmdStatsError {
@@ -157,8 +158,10 @@ pub enum TxProjectFileLoadError {
     ConvertError(#[from] TxConfigLoadError),
 }
 
+/// Try find transifex.yaml in `project_root/transifex.yaml`.
+/// And if not found, try `project_root/.tx/transifex.yaml`.
+/// If still not found, return error.
 fn try_laod_transifex_project_file(project_root: &PathBuf) -> Result<(PathBuf, TransifexYaml), TxProjectFileLoadError> {
-    // try find transifex.yaml in project_root/transifex.yaml and if not found, try project_root/.tx/transifex.yaml. If still not found, return error.
     try_laod_transifex_yaml_file(project_root).or_else(|e| {
         try_laod_tx_config_file(project_root).map(|(tx_config_file, tx_config)| {
             let tx_yaml = tx_config.to_transifex_yaml();

@@ -5,9 +5,11 @@ use std::io::stdin;
 use directories::{BaseDirs, ProjectDirs};
 use thiserror::Error as TeError;
 
-use crate::transifex_rest_api::{TransifexData, TransifexRestApi};
-use crate::transifex_yaml_file::*;
-use crate::tx_config_file::load_transifexrc_file;
+use crate::transifex::{
+    rest_api::{TransifexData, TransifexRestApi},
+    yaml_file::*,
+    tx_config_file::load_transifexrc_file,
+};
 
 #[derive(TeError, Debug)]
 pub enum CmdY2TCError {
