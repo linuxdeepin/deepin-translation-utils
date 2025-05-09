@@ -4,45 +4,17 @@
 
 // Linguist .ts XML file spec: https://doc.qt.io/qt-6/linguist-ts-file-format.html
 
-use std::fs;
-use std::ops;
-use std::path::PathBuf;
-use std::u64;
-
+use std::fs::File;
+use std::path::Path;
 use thiserror::Error as TeError;
+use serde::{Deserialize, Serialize};
 use quick_xml::DeError;
-use serde::Deserialize;
-use serde::Serialize;
 use quick_xml::se::SeError;
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesText, Event};
+use super::common::MessageStats;
 
-#[derive(Debug, Default, Serialize, PartialEq)]
-pub struct TsMessageStats {
-    pub finished: u64,
-    pub unfinished: u64,
-    pub vanished: u64,
-    pub obsolete: u64,
-}
-
-impl TsMessageStats {
-    pub fn completeness_percentage(&self) -> f64 {
-        let total = self.finished + self.unfinished;
-        if total == 0 {
-            return 0.0;
-        }
-        (self.finished as f64 / total as f64) * 100.0
-    }
-}
-
-impl ops::AddAssign<&Self> for TsMessageStats {
-    fn add_assign(&mut self, rhs: &Self) {
-        self.finished += rhs.finished;
-        self.unfinished += rhs.unfinished;
-        self.vanished += rhs.vanished;
-        self.obsolete += rhs.obsolete;
-    }
-}
+// ===== TS Basic =====
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename = "TS")]
@@ -54,6 +26,8 @@ pub struct Ts {
     #[serde(rename = "context")]
     pub contexts: Vec<Context>,
 }
+
+// === TS Unique ===
 
 impl Ts {
     pub fn clear_finished_messages(&mut self) {
@@ -67,12 +41,20 @@ impl Ts {
             }
         }
     }
+}
 
-    pub fn set_language(&mut self, language: &String) {
-        self.language = Some(language.clone());
+// === TS Common ===
+
+impl Ts {
+    pub fn get_language(&self) -> Option<String> {
+        self.language.clone()
     }
 
-    pub fn get_message_stats(&self) -> TsMessageStats {
+    pub fn set_language(&mut self, language: &str) {
+        self.language = Some(language.to_string());
+    }
+
+    pub fn get_message_stats(&self) -> MessageStats {
         let mut finished = 0;
         let mut unfinished = 0;
         let mut vanished = 0;
@@ -95,7 +77,7 @@ impl Ts {
                 }
             }
         }
-        return TsMessageStats {
+        return MessageStats {
             finished,
             unfinished,
             vanished,
@@ -103,6 +85,8 @@ impl Ts {
         }
     }
 }
+
+// === Sub Structs ===
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Context {
@@ -127,8 +111,8 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn fill_translation(&mut self, translation: &String) {
-        self.translation.value = Some(translation.clone());
+    pub fn fill_translation(&mut self, translation: &str) {
+        self.translation.value = Some(translation.to_string());
         self.translation.type_attr = None;
     }
 }
@@ -159,40 +143,7 @@ pub struct Location {
     pub line: String,
 }
 
-#[derive(TeError, Debug)]
-pub enum TsLoadError {
-    #[error("File not found")]
-    FileNotFound,
-    #[error("Can not read file")]
-    ReadFile(#[from] std::io::Error),
-    #[error("Fail to deserialize file: {0}")]
-    Serde(#[from] DeError),
-}
-
-pub fn correct_language_code(language_code: &String) -> String {
-    let mut result = language_code.clone();
-    result = result.replace("_", "-");
-    return result;
-}
-
-pub fn load_ts_file_or_default(linguist_ts_file: &PathBuf, fallback: &Ts, fallback_language_code: &String) -> Result<Ts, TsLoadError> {
-    if !linguist_ts_file.exists() {
-        let mut clone = fallback.clone();
-        clone.language = Some(fallback_language_code.clone());
-        clone.clear_finished_messages();
-        return Ok(clone);
-    } else {
-        return load_ts_file(linguist_ts_file);
-    }
-}
-
-pub fn load_ts_file(linguist_ts_file: &PathBuf) -> Result<Ts, TsLoadError> {
-    if !linguist_ts_file.is_file() {
-        return Err(TsLoadError::FileNotFound);
-    }
-    let source_content = fs::read_to_string(&linguist_ts_file)?;
-    Ok(quick_xml::de::from_str::<Ts>(source_content.as_str())?)
-}
+// ===== TS Load & Save =====
 
 pub trait WriterExt {
     fn write_linguist_ts_file(
@@ -213,22 +164,55 @@ impl<W: std::io::Write> WriterExt for Writer<W> {
 }
 
 #[derive(TeError, Debug)]
+pub enum TsLoadError {
+    #[error("Can not open file")]
+    ReadFile(#[from] std::io::Error),
+    #[error("Fail to deserialize file because: {0}")]
+    Serde(#[from] DeError),
+}
+
+#[derive(TeError, Debug)]
 pub enum TsSaveError {
     #[error("Can not create file")]
     CreateFile(#[from] std::io::Error),
-    #[error("Fail to serialize file: {0}")]
+    #[error("Fail to serialize file because: {0}")]
     Serde(#[from] SeError),
 }
 
-pub fn save_ts_file(linguist_ts_file: &PathBuf, content: &Ts) -> Result<(), TsSaveError> {
-    let target_file = fs::File::create(linguist_ts_file)?;
-    let mut writer = Writer::new_with_indent(&target_file, b' ', 4);
-    writer.write_linguist_ts_file(content)?;
-    Ok(())
+impl Ts {
+    pub fn load_from_file(linguist_ts_file: &Path) -> Result<Ts, TsLoadError> {
+        let file = File::open(linguist_ts_file)?;
+        let file_reader = std::io::BufReader::new(file);
+        Ok(quick_xml::de::from_reader::<_, Ts>(file_reader)?)
+    }
+
+    #[cfg(test)]
+    pub fn load_from_from_str(content: &str) -> Result<Ts, TsLoadError> {
+        Ok(quick_xml::de::from_str(content)?)
+    }
+
+    pub fn load_from_file_or_default(linguist_ts_file: &Path, fallback: &Ts, fallback_language_code: &str) -> Result<Ts, TsLoadError> {
+        if !linguist_ts_file.exists() {
+            let mut clone = fallback.clone();
+            clone.set_language(fallback_language_code);
+            clone.clear_finished_messages();
+            return Ok(clone);
+        } else {
+            return Self::load_from_file(linguist_ts_file);
+        }
+    }
+
+    pub fn save_into_file(&self, linguist_ts_file: &Path) -> Result<(), TsSaveError> {
+        let target_file = File::create(linguist_ts_file)?;
+        let mut writer = Writer::new_with_indent(&target_file, b' ', 4);
+        writer.write_linguist_ts_file(self)?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 pub mod tests {
+    use super::super::common::MessageStats;
     use super::*;
 
     pub const TEST_ZH_CN_TS_CONTENT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -263,7 +247,7 @@ pub mod tests {
 
     #[test]
     fn tst_parse_ts_content() {
-        let ts: Ts = quick_xml::de::from_str(TEST_ZH_CN_TS_CONTENT).unwrap();
+        let ts = Ts::load_from_from_str(TEST_ZH_CN_TS_CONTENT).unwrap();
         assert_eq!(ts.language, Some("zh_CN".to_string()));
         assert_eq!(ts.version, "2.1");
         assert_eq!(ts.contexts.len(), 1);
@@ -272,7 +256,7 @@ pub mod tests {
         assert!(matches!(ts.contexts[0].messages[1].translation.type_attr, None));
         assert!(matches!(ts.contexts[0].messages[2].translation.type_attr, Some(TranslationType::Obsolete)));
         assert!(matches!(ts.contexts[0].messages[3].translation.type_attr, Some(TranslationType::Unfinished)));
-        assert_eq!(ts.get_message_stats(), TsMessageStats {
+        assert_eq!(ts.get_message_stats(), MessageStats {
             finished: 3,
             unfinished: 1,
             vanished: 0,
