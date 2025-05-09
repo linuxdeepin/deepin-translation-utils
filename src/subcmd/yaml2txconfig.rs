@@ -1,14 +1,17 @@
+// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+//
+// SPDX-License-Identifier: MIT
+
 use core::panic;
 use std::fs;
 use std::path::PathBuf;
 use std::io::stdin;
-use directories::{BaseDirs, ProjectDirs};
+use directories::ProjectDirs;
 use thiserror::Error as TeError;
 
 use crate::transifex::{
-    rest_api::{TransifexData, TransifexRestApi},
+    rest_api::TransifexRestApi,
     yaml_file::*,
-    tx_config_file::load_transifexrc_file,
 };
 
 #[derive(TeError, Debug)]
@@ -49,19 +52,6 @@ fn get_github_repository_from_user_input(project_root: &PathBuf, github_reposito
     }
 }
 
-fn create_rest_client_from_transifexrc_file(force_online: bool) -> TransifexRestApi {
-    let xdg_dirs = BaseDirs::new().expect("Not able to get xdg base directories");
-    let transifexrc_file = xdg_dirs.home_dir().join(".transifexrc");
-    if !transifexrc_file.exists() {
-        eprintln!("Warning: .transifexrc file not found, not able to fetch project resource list");
-        if force_online {
-            panic!("Force online mode, but .transifexrc file not found");
-        }
-    }
-    let transifexrc = load_transifexrc_file(&transifexrc_file).expect("Failed to load .transifexrc file");
-    TransifexRestApi::new(&transifexrc.rest_hostname, &transifexrc.token)
-}
-
 fn fetch_project_list(organization_slug: &str, force_online: bool) -> Vec<String> {
     let xdg_proj_dirs = ProjectDirs::from("", "deepin", "deepin-translation-utils").expect("Not able to get project directories");
     let cache_file = xdg_proj_dirs.cache_dir().join(format!("{organization_slug}.yaml"));
@@ -71,7 +61,7 @@ fn fetch_project_list(organization_slug: &str, force_online: bool) -> Vec<String
         let list = serde_yml::from_str::<Vec<String>>(source_content.as_str()).expect("Failed to parse cached project list");
         return list;
     } else {
-        let client = create_rest_client_from_transifexrc_file(force_online);
+        let client = TransifexRestApi::new_from_transifexrc().expect("Failed to create Transifex REST client");
 
         println!("Fetching o:{organization_slug} project list from Transifex...");
         let entries = client.get_all_projects(organization_slug).expect("Failed to fetch project resource list");
@@ -85,26 +75,7 @@ fn fetch_project_list(organization_slug: &str, force_online: bool) -> Vec<String
     }
 }
 
-fn parse_linked_resource_category(entry: TransifexData) -> Option<TxResourceLookupEntry> {
-    let binding = entry.attributes.categories?;
-    let category = binding.iter()
-        .find(|&c| c.starts_with("github#repository:"))?;
-
-    let re = regex::Regex::new(r"^github#repository:(?P<organization>[^/]+)/(?P<repository>[^#]+)#branch:(?P<branch>[^#]+)#path:(?P<path>.+)$").unwrap();
-    let captures = re.captures(category)?;
-    let organization = captures.name("organization")?.as_str();
-    let repository = captures.name("repository")?.as_str();
-    let branch = captures.name("branch")?.as_str();
-    let path = captures.name("path")?.as_str();
-    Some(TxResourceLookupEntry {
-        repository: format!("{organization}/{repository}"),
-        branch: branch.to_string(),
-        resource: path.to_string(),
-        transifex_resource_id: entry.id.to_string(),
-    })
-}
-
-fn fetch_resource_list(organization_slug: &str, project_slug: &str, force_online: bool) -> Vec<TxResourceLookupEntry> {
+fn fetch_linked_resource_list(organization_slug: &str, project_slug: &str, force_online: bool) -> Vec<TxResourceLookupEntry> {
     let xdg_proj_dirs = ProjectDirs::from("", "deepin", "deepin-translation-utils").expect("Not able to get project directories");
     let cache_file = xdg_proj_dirs.cache_dir().join(format!("{organization_slug}/{project_slug}.yaml"));
     
@@ -114,11 +85,11 @@ fn fetch_resource_list(organization_slug: &str, project_slug: &str, force_online
         let list = serde_yml::from_str::<Vec<TxResourceLookupEntry>>(source_content.as_str()).expect("Failed to parse cached project resource list");
         return list;
     } else {
-        let client = create_rest_client_from_transifexrc_file(force_online);
+        let client = TransifexRestApi::new_from_transifexrc().expect("Failed to create Transifex REST client");
 
         println!("Fetching o:{organization_slug}:p:{project_slug} project resource list from Transifex...");
         let entries = client.get_all_linked_resources(organization_slug, project_slug).expect("Failed to fetch project resource list");
-        let entries = entries.into_iter().filter_map(parse_linked_resource_category).collect();
+        let entries = entries.into_iter().filter_map(|entry| entry.parse_linked_resource_category()).collect();
         let cache_content = serde_yml::to_string::<Vec<TxResourceLookupEntry>>(&entries).expect("Failed to serialize project resource list as cache");
         let parent_dir = cache_file.parent().unwrap();
         fs::create_dir_all(&parent_dir).expect("Failed to create cache directory");
@@ -127,17 +98,11 @@ fn fetch_resource_list(organization_slug: &str, project_slug: &str, force_online
     }
 }
 
-pub fn subcmd_yaml2txconfig(project_root: &PathBuf, force_online: bool, github_repository: Option<String>, organization_slug: String, project_slug: Option<String>) -> Result<(), CmdY2TCError> {
-    let (transifex_yaml_file, tx_yaml) = try_laod_transifex_yaml_file(project_root)?;
-    println!("Found Transifex project config file at: {transifex_yaml_file:?}");
-
-    let github_repository = get_github_repository_from_user_input(project_root, github_repository);
-    println!("GitHub repository name: {github_repository}");
-    
+pub fn create_linked_resources_table(organization_slug: &str, project_slug: Option<String>, force_online: bool) -> Vec<TxResourceLookupEntry> {
     let mut lookup_table = Vec::<TxResourceLookupEntry>::new();
 
     if let Some(project_slug) = project_slug {
-        let resource_list = fetch_resource_list(&organization_slug, &project_slug, force_online);
+        let resource_list = fetch_linked_resource_list(&organization_slug, &project_slug, force_online);
         lookup_table.extend(resource_list);
     } else {
         let project_list = fetch_project_list(&organization_slug, force_online);
@@ -147,11 +112,22 @@ pub fn subcmd_yaml2txconfig(project_root: &PathBuf, force_online: bool, github_r
             let re = regex::Regex::new(r"^o:(?P<organization>[^:]+):p:(?P<project>[^:]+)$").unwrap();
             let captures = re.captures(&project_full_slug).unwrap();
             let project_slug = captures.name("project").unwrap().as_str();
-            let resource_list = fetch_resource_list(&organization_slug, &project_slug, force_online);
+            let resource_list = fetch_linked_resource_list(&organization_slug, &project_slug, force_online);
             lookup_table.extend(resource_list);
         }
     }
 
+    lookup_table
+}
+
+pub fn subcmd_yaml2txconfig(project_root: &PathBuf, force_online: bool, github_repository: Option<String>, organization_slug: String, project_slug: Option<String>) -> Result<(), CmdY2TCError> {
+    let (transifex_yaml_file, tx_yaml) = try_laod_transifex_yaml_file(project_root)?;
+    println!("Found Transifex project config file at: {transifex_yaml_file:?}");
+
+    let github_repository = get_github_repository_from_user_input(project_root, github_repository);
+    println!("GitHub repository name: {github_repository}");
+    
+    let lookup_table = create_linked_resources_table(&organization_slug, project_slug, force_online);
     let tx_config = tx_yaml.to_tx_config(github_repository, lookup_table);
 
     let tx_config_file = project_root.join(".tx/config");

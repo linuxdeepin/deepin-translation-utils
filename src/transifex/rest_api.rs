@@ -4,8 +4,11 @@
 
 // Transifex OpenAPI doc: https://transifex.github.io/openapi/
 
+use directories::BaseDirs;
 use serde::Deserialize;
 use thiserror::Error as TeError;
+
+use super::{tx_config_file::{load_transifexrc_file, TxConfigLoadError}, yaml_file::TxResourceLookupEntry};
 
 pub struct TransifexRestApi {
     rest_hostname: String,
@@ -31,6 +34,27 @@ pub struct TransifexData {
     /// `o:organization_slug:p:project_slug:r:resource_slug`
     pub id: String,
     pub attributes: TransifexDataAttributes,
+}
+
+impl TransifexData {
+    pub fn parse_linked_resource_category(&self) -> Option<TxResourceLookupEntry> {
+        let binding = self.attributes.categories.clone()?;
+        let category = binding.iter()
+            .find(|&c| c.starts_with("github#repository:"))?;
+
+        let re = regex::Regex::new(r"^github#repository:(?P<organization>[^/]+)/(?P<repository>[^#]+)#branch:(?P<branch>[^#]+)#path:(?P<path>.+)$").unwrap();
+        let captures = re.captures(category)?;
+        let organization = captures.name("organization")?.as_str();
+        let repository = captures.name("repository")?.as_str();
+        let branch = captures.name("branch")?.as_str();
+        let path = captures.name("path")?.as_str();
+        Some(TxResourceLookupEntry {
+            repository: format!("{organization}/{repository}"),
+            branch: branch.to_string(),
+            resource: path.to_string(),
+            transifex_resource_id: self.id.to_string(),
+        })
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -70,6 +94,13 @@ impl TransifexRestApi {
             rest_hostname: rest_hostname.to_string(),
             token: token.to_string(),
         }
+    }
+
+    pub fn new_from_transifexrc() -> Result<Self, TxConfigLoadError> {
+        let xdg_dirs = BaseDirs::new().expect("Not able to get xdg base directories");
+        let transifexrc_file = xdg_dirs.home_dir().join(".transifexrc");
+        let transifexrc = load_transifexrc_file(&transifexrc_file)?;
+        Ok(TransifexRestApi::new(&transifexrc.rest_hostname, &transifexrc.token))
     }
     
     pub fn fetch_paginated<T: serde::de::DeserializeOwned>(&self, url: &str) -> Result<Vec<T>, TransifexRestApiError> {

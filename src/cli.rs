@@ -87,6 +87,21 @@ pub enum Commands {
     TxConfig2Yaml {
         project_root: PathBuf,
     },
+    #[command(name = "monotxconfig")]
+    #[command(
+        about = "Generate .tx/config with all linked resources under the given Transifex organization",
+        long_about = "Generate a .tx/config file with all linked resources under the given Transifex organization\n\n\
+            This can be handy for getting statistics of all projects under the same organization.",
+    )]
+    MonoTxConfig {
+        project_root: PathBuf,
+        /// Force to fetch the resource slugs via Transifex REST API, and update local cache.
+        #[clap(short, long, action = clap::ArgAction::SetTrue, default_value_t = false)]
+        force_online: bool,
+        /// organization slug of the project on Transifex platform
+        #[arg(short, long, default_value = "linuxdeepin")]
+        organization_slug: String,
+    },
 }
 
 #[derive(TeError, Debug)]
@@ -117,7 +132,10 @@ pub fn execute() -> Result<(), CliError> {
         },
         Commands::TxConfig2Yaml { project_root } => {
             subcmd::subcmd_txconfig2yaml(&project_root)?;
-        }
+        },
+        Commands::MonoTxConfig { project_root, force_online, organization_slug } => {
+            subcmd::subcmd_monotxconfig(&project_root, force_online, organization_slug);
+        },
     }
 
     Ok(())

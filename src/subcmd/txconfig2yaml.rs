@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+//
+// SPDX-License-Identifier: MIT
+
 use std::fs;
 use std::path::PathBuf;
 use thiserror::Error as TeError;
