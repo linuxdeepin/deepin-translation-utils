@@ -108,7 +108,7 @@ pub enum Commands {
 #[error("{0}")]
 pub enum CliError {
     ZhConv(#[from] crate::subcmd::zhconv::CmdError),
-    Statistics(#[from] crate::subcmd::statistics::CmdStatsError),
+    Statistics(#[from] crate::subcmd::statistics::CmdError),
     Yaml2TxConfig(#[from] crate::subcmd::yaml2txconfig::CmdY2TCError),
     TxConfig2Yaml(#[from] crate::subcmd::txconfig2yaml::CmdTC2YError),
 }
@@ -119,10 +119,10 @@ pub fn execute() -> Result<(), CliError> {
     use crate::subcmd;
     match args.command {
         Commands::ZhConv { source_language, target_languages, linguist_ts_file } => {
-            subcmd::subcmd_zhconv(source_language, target_languages, linguist_ts_file)?;
+            subcmd::subcmd_zhconv(&source_language, &target_languages, &linguist_ts_file)?;
         },
         Commands::ZhConvPlain { target_languages, content } => {
-            subcmd::subcmd_zhconv_plain(target_languages, content)?;
+            subcmd::subcmd_zhconv_plain(&target_languages, &content)?;
         },
         Commands::Statistics { project_root, format, sort_by} => {
             subcmd::subcmd_statistics(&project_root, format, sort_by)?;
