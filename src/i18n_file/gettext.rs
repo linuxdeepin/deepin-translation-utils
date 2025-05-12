@@ -144,6 +144,6 @@ msgstr ""
             obsolete: 0,
             fuzzy: 1,
         });
-        assert_eq!(po.get_message_stats().completeness_percentage(), 2.0 / 4.0 * 100.0);
+        assert_eq!(po.get_message_stats().completeness_percentage(None), 2.0 / 4.0 * 100.0);
     }
 }

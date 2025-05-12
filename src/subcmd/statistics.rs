@@ -82,12 +82,14 @@ impl ProjectResourceStats {
         (total_resources, total_stats)
     }
 
-    pub fn print_state_plain_table(&self, sort_by: StatsSortBy) {
+    pub fn print_state_plain_table(&self, standalone_percentage: bool, sort_by: StatsSortBy) {
         println!("| No. | Lang   | Completeness | Resources | Translated | Unfinished | Vanished |");
         println!("| --- | ------ | ------------ | --------- | ---------- | ---------- | -------- |");
         let (source_resources, source_stats) = self.get_source_stats();
+        let total_strings = source_stats.shown_translated() + source_stats.shown_unfinished();
+        let reference_total = (!standalone_percentage).then_some(total_strings);
         println!("|   0 | Source | {0:>11.2}% | {1:9} | {2:10} | {3:10} | {4:8} |", 
-            100.0, source_resources, source_stats.shown_translated() + source_stats.shown_unfinished(), 0, source_stats.shown_obsolete());
+            100.0, source_resources, total_strings, 0, source_stats.shown_obsolete());
         let language_codes = match sort_by {
             StatsSortBy::LanguageCode => {
                 self.target_lang_codes.clone()
@@ -97,8 +99,8 @@ impl ProjectResourceStats {
                 sorted_langs.sort_by(|a, b| {
                     let (_, a_stats) = self.get_target_stats_by_language_code(&a);
                     let (_, b_stats) = self.get_target_stats_by_language_code(&b);
-                    let a_completeness = a_stats.completeness_percentage();
-                    let b_completeness = b_stats.completeness_percentage();
+                    let a_completeness = a_stats.completeness_percentage(reference_total);
+                    let b_completeness = b_stats.completeness_percentage(reference_total);
                     if a_completeness > b_completeness {
                         std::cmp::Ordering::Less
                     } else if a_completeness < b_completeness {
@@ -114,7 +116,7 @@ impl ProjectResourceStats {
         for (idx, lang) in language_codes.iter().enumerate() {
             let (target_resources, target_stats) = self.get_target_stats_by_language_code(&lang);
             println!("| {0:3} | {1:>6} | {2:>11.2}% | {3:9} | {4:10} | {5:10} | {6:8} |", 
-                idx + 1, lang, target_stats.completeness_percentage(), target_resources, target_stats.shown_translated(), target_stats.shown_unfinished(), target_stats.shown_obsolete());
+                idx + 1, lang, target_stats.completeness_percentage(reference_total), target_resources, target_stats.shown_translated(), target_stats.shown_unfinished(), target_stats.shown_obsolete());
         }
     }
 
@@ -160,7 +162,7 @@ fn try_laod_transifex_project_file(project_root: &PathBuf) -> Result<(PathBuf, T
     })
 }
 
-pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: StatsSortBy, ignore_languages: Vec<String>) -> Result<(), CmdError> {
+pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: StatsSortBy, standalone_percentage: bool, ignore_languages: Vec<String>) -> Result<(), CmdError> {
     let (transifex_yaml_file, tx_yaml) = try_laod_transifex_project_file(project_root)?;
     if matches!(format, StatsFormat::PlainTable) {
         println!("Found Transifex project config file at: {transifex_yaml_file:?}");
@@ -216,7 +218,7 @@ pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: S
 
     // finally, print the stats of the project
     match format {
-        StatsFormat::PlainTable => project_stats.print_state_plain_table(sort_by),
+        StatsFormat::PlainTable => project_stats.print_state_plain_table(standalone_percentage, sort_by),
         StatsFormat::Yaml => project_stats.print_stats_yaml()?,
     }
 

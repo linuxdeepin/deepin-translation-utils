@@ -96,11 +96,11 @@ impl MessageStats {
     }
 
     /// The "Completeness" value shown in statistics table.
-    pub fn completeness_percentage(&self) -> f64 {
+    pub fn completeness_percentage(&self, reference_total : Option<u64>) -> f64 {
         let finished = self.shown_translated();
         let unfinished = self.shown_unfinished();
-        
-        let total = finished + unfinished;
+
+        let total = reference_total.unwrap_or(finished + unfinished);
         if total == 0 {
             return 0.0;
         } else {

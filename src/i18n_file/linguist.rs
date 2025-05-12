@@ -247,6 +247,6 @@ pub mod tests {
             obsolete: 1,
             fuzzy: 0,
         });
-        assert_eq!(ts.get_message_stats().completeness_percentage(), 3.0 / 4.0 * 100.0);
+        assert_eq!(ts.get_message_stats().completeness_percentage(None), 3.0 / 4.0 * 100.0);
     }
 }
