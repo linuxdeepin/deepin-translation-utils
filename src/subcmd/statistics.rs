@@ -83,11 +83,11 @@ impl ProjectResourceStats {
     }
 
     pub fn print_state_plain_table(&self, sort_by: StatsSortBy) {
-        println!("| No. | Lang   | Completeness | Resources | Translated | Vanished | Obsolete |");
-        println!("| --- | ------ | ------------ | --------- | ---------- | -------- | -------- |");
+        println!("| No. | Lang   | Completeness | Resources | Translated | Unfinished | Vanished |");
+        println!("| --- | ------ | ------------ | --------- | ---------- | ---------- | -------- |");
         let (source_resources, source_stats) = self.get_source_stats();
-        println!("|   0 | Source | {0:>11.2}% | {1:9} | {2:10} | {3:8} | {4:8} |", 
-            100.0, source_resources, source_stats.finished + source_stats.unfinished, source_stats.vanished, source_stats.obsolete);
+        println!("|   0 | Source | {0:>11.2}% | {1:9} | {2:10} | {3:10} | {4:8} |", 
+            100.0, source_resources, source_stats.shown_translated() + source_stats.shown_unfinished(), 0, source_stats.shown_obsolete());
         let language_codes = match sort_by {
             StatsSortBy::LanguageCode => {
                 self.target_lang_codes.clone()
@@ -113,8 +113,8 @@ impl ProjectResourceStats {
         
         for (idx, lang) in language_codes.iter().enumerate() {
             let (target_resources, target_stats) = self.get_target_stats_by_language_code(&lang);
-            println!("| {0:3} | {1:>6} | {2:>11.2}% | {3:9} | {4:10} | {5:8} | {6:8} |", 
-                idx + 1, lang, target_stats.completeness_percentage(), target_resources, target_stats.finished, target_stats.vanished, target_stats.obsolete);
+            println!("| {0:3} | {1:>6} | {2:>11.2}% | {3:9} | {4:10} | {5:10} | {6:8} |", 
+                idx + 1, lang, target_stats.completeness_percentage(), target_resources, target_stats.shown_translated(), target_stats.shown_unfinished(), target_stats.shown_obsolete());
         }
     }
 
