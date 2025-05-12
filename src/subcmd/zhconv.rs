@@ -294,7 +294,7 @@ mod tests {
         assert!(translate_ts_content(&source_ts, &mut target_ts).is_ok());
         assert_eq!(target_ts.language, Some("zh_TW".to_string()));
         assert_eq!(target_ts.contexts.len(), 1);
-        assert_eq!(target_ts.contexts[0].messages.len(), 4);
+        assert_eq!(target_ts.contexts[0].messages.len(), 5);
         assert_eq!(target_ts.contexts[0].messages[0].translation.value, Some(String::from("海內存知己")));
         assert_eq!(target_ts.contexts[0].messages[1].translation.value, Some(String::from("軟體開發工程師在使用滑鼠操作螢幕上的游標")));
         assert_eq!(target_ts.contexts[0].messages[2].translation.value, Some(String::from("电视频段"))); // marked as obsolete, should not be translated.

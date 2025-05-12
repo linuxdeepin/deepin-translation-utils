@@ -122,6 +122,8 @@ pub struct Message {
     pub translation: Translation,
     #[serde(rename = "comment", skip_serializing_if = "Option::is_none", default)]
     pub comment: Option<String>,
+    #[serde(rename = "@numerus", skip_serializing_if = "Option::is_none", default)]
+    pub numerus: Option<String>,
 }
 
 impl Message {
@@ -145,6 +147,8 @@ pub struct Translation {
     pub type_attr: Option<TranslationType>,
     #[serde(rename = "$value")]
     pub value: Option<String>,
+    #[serde(rename = "numerusform", default)]
+    pub numerus_forms: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -250,6 +254,10 @@ pub mod tests {
         <source>England</source>
         <translation type="unfinished"/>
     </message>
+    <message numerus="yes">
+        <source>%n photos</source>
+        <translation><numerusform>共%n张照片</numerusform></translation>
+    </message>
 </context>
 </TS>"#;
 
@@ -260,16 +268,16 @@ pub mod tests {
         assert_eq!(ts.version, "2.1");
         assert_eq!(ts.contexts.len(), 1);
         assert_eq!(ts.contexts[0].name, "ts::SampleContext");
-        assert_eq!(ts.contexts[0].messages.len(), 4);
+        assert_eq!(ts.contexts[0].messages.len(), 5);
         assert!(matches!(ts.contexts[0].messages[1].translation.type_attr, None));
         assert!(matches!(ts.contexts[0].messages[2].translation.type_attr, Some(TranslationType::Obsolete)));
         assert!(matches!(ts.contexts[0].messages[3].translation.type_attr, Some(TranslationType::Unfinished)));
         assert_eq!(ts.get_message_stats(), TsMessageStats {
-            finished: 2,
+            finished: 3,
             unfinished: 1,
             vanished: 0,
             obsolete: 1,
         });
-        assert_eq!(ts.get_message_stats().completeness_percentage(), 2.0 / 3.0 * 100.0);
+        assert_eq!(ts.get_message_stats().completeness_percentage(), 3.0 / 4.0 * 100.0);
     }
 }
