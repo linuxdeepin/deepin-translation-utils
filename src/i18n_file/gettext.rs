@@ -38,10 +38,12 @@ impl Po {
     }
 
     pub fn get_message_stats(&self) -> MessageStats {
-        let mut stats = MessageStats::default();
+        let mut stats = MessageStats::new();
         for message in self.inner.messages() {
             if message.is_translated() {
                 stats.finished += 1;
+            } else if message.is_fuzzy() {
+                stats.fuzzy += 1;
             } else {
                 stats.unfinished += 1;
             }
@@ -137,9 +139,10 @@ msgstr ""
         assert_eq!(po.get_language(), "zh_CN");
         assert_eq!(po.get_message_stats(), MessageStats {
             finished: 2,
-            unfinished: 2,
+            unfinished: 1,
             vanished: 0,
             obsolete: 0,
+            fuzzy: 1,
         });
         assert_eq!(po.get_message_stats().completeness_percentage(), 2.0 / 4.0 * 100.0);
     }

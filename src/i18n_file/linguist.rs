@@ -55,34 +55,18 @@ impl Ts {
     }
 
     pub fn get_message_stats(&self) -> MessageStats {
-        let mut finished = 0;
-        let mut unfinished = 0;
-        let mut vanished = 0;
-        let mut obsolete = 0;
+        let mut rv = MessageStats::new();
         for context in &self.contexts {
             for message in &context.messages {
                 match message.translation.type_attr {
-                    Some(TranslationType::Unfinished) => {
-                        unfinished += 1;
-                    }
-                    Some(TranslationType::Vanished) => {
-                        vanished += 1;
-                    }
-                    Some(TranslationType::Obsolete) => {
-                        obsolete += 1;
-                    }
-                    None => {
-                        finished += 1;
-                    }
+                    Some(TranslationType::Unfinished) => rv.unfinished += 1,
+                    Some(TranslationType::Vanished) => rv.vanished += 1,
+                    Some(TranslationType::Obsolete) => rv.obsolete += 1,
+                    None => rv.finished += 1,
                 }
             }
         }
-        return MessageStats {
-            finished,
-            unfinished,
-            vanished,
-            obsolete,
-        }
+        rv
     }
 }
 
@@ -261,6 +245,7 @@ pub mod tests {
             unfinished: 1,
             vanished: 0,
             obsolete: 1,
+            fuzzy: 0,
         });
         assert_eq!(ts.get_message_stats().completeness_percentage(), 3.0 / 4.0 * 100.0);
     }
