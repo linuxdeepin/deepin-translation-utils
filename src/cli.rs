@@ -57,6 +57,8 @@ pub enum Commands {
         format: crate::subcmd::statistics::StatsFormat,
         #[clap(short, long, default_value_t, value_enum)]
         sort_by: crate::subcmd::statistics::StatsSortBy,
+        #[arg(short, long, default_value = "en,en_US", value_delimiter = ',')]
+        ignore_languages: Vec<String>,
     },
     #[command(name = "yaml2txconfig")]
     #[command(
@@ -124,8 +126,8 @@ pub fn execute() -> Result<(), CliError> {
         Commands::ZhConvPlain { target_languages, content } => {
             subcmd::subcmd_zhconv_plain(&target_languages, &content)?;
         },
-        Commands::Statistics { project_root, format, sort_by} => {
-            subcmd::subcmd_statistics(&project_root, format, sort_by)?;
+        Commands::Statistics { project_root, format, sort_by, ignore_languages } => {
+            subcmd::subcmd_statistics(&project_root, format, sort_by, ignore_languages)?;
         },
         Commands::Yaml2TxConfig { project_root, force_online, github_repository, organization_slug, project_slug } => {
             subcmd::subcmd_yaml2txconfig(&project_root, force_online, github_repository, organization_slug, project_slug)?;
