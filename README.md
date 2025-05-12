@@ -10,6 +10,7 @@ This program currently supports the following features:
   - Transifex API is used to look up and match the resource slug.
   - Local cache can be used without making API request if the resource info data is already fetched previously.
 - Generates Transifex GitHub integration `transifex.yaml` based on `.tx/config`.
+- Generate a single `.tx/config` contains all linked resources under the given Transifex organization.
 
 ## Usage
 
@@ -21,4 +22,5 @@ Please consult `Cargo.toml`.
 
 ### Note:
 
-`quick_xml` (with `serialize` feature enabled) instead of `serde_xml_rs` is used to parse and write XML files because of there are [known bugs](https://github.com/RReverser/serde-xml-rs/issues/186) that hasn't be fixed which also appears in this program. Their derive macros syntax are **not compatible**.
+- `quick_xml` (with `serialize` feature enabled) instead of `serde_xml_rs` is used to parse and write XML files because of there are [known bugs](https://github.com/RReverser/serde-xml-rs/issues/186) that hasn't be fixed which also appears in this program. Their derive macros syntax are **not compatible**.
+- Don't blindly pull translation resources after using the `monotxconfig` subcommand to generate `.tx/config` unless you are absolutely sure what you're doing. Pulling all translation resources directly from Transifex is a very slow process.
