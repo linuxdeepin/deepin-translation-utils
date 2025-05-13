@@ -46,7 +46,7 @@ pub fn load_transifexrc_file(transifexrc_file: &PathBuf) -> Result<TransifexRcSe
 
 impl TransifexRcSection {
     pub fn from_str(content: &str) -> Result<Self, TxConfigLoadError> {
-        let mut config = Ini::new();
+        let mut config = Ini::new_cs();
         config.read(content.to_string())
           .map_err(|err| TxConfigLoadError::ParseError(err.to_string()))?;
 
@@ -80,7 +80,7 @@ pub fn load_tx_config_file(tx_config_file: &PathBuf) -> Result<TxConfig, TxConfi
 
 impl TxConfig {
     pub fn from_str(content: &str) -> Result<Self, TxConfigLoadError> {
-        let mut config = Ini::new();
+        let mut config = Ini::new_cs();
         config.read(content.to_string())
             .map_err(|err| TxConfigLoadError::ParseError(err.to_string()))?;
         let mut main_section = TxConfigSectionMain::default();
@@ -112,7 +112,7 @@ impl TxConfig {
     }
 
     pub fn to_str(&self) -> String {
-        let mut config = Ini::new();
+        let mut config = Ini::new_cs();
         config.setstr("main", "host", Some(&self.main_section.host));
         if let Some(minimum_prec) = self.main_section.minimum_prec {
             config.setstr("main", "minimum_perc", Some(&minimum_prec.to_string()));
