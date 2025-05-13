@@ -115,7 +115,7 @@ pub struct Translation {
     pub type_attr: Option<TranslationType>,
     #[serde(rename = "$value")]
     pub value: Option<String>,
-    #[serde(rename = "numerusform", default)]
+    #[serde(rename = "numerusform", skip_serializing_if = "Vec::is_empty", default)]
     pub numerus_forms: Vec<String>,
 }
 
