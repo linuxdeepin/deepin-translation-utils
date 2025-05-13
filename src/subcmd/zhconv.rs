@@ -241,7 +241,7 @@ mod tests {
         use crate::i18n_file::linguist::Ts;
         use crate::i18n_file::linguist::tests::TEST_ZH_CN_TS_CONTENT;
 
-        let source_ts: Ts = Ts::load_from_from_str(TEST_ZH_CN_TS_CONTENT).unwrap();
+        let source_ts: Ts = Ts::load_from_str(TEST_ZH_CN_TS_CONTENT).unwrap();
         let mut target_ts: Ts = source_ts.clone();
         target_ts.set_language("zh_TW");
         target_ts.clear_finished_messages();

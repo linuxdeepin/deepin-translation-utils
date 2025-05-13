@@ -171,7 +171,7 @@ impl Ts {
     }
 
     #[cfg(test)]
-    pub fn load_from_from_str(content: &str) -> Result<Ts, TsLoadError> {
+    pub fn load_from_str(content: &str) -> Result<Ts, TsLoadError> {
         Ok(quick_xml::de::from_str(content)?)
     }
 
@@ -231,7 +231,7 @@ pub mod tests {
 
     #[test]
     fn tst_parse_ts_content() {
-        let ts = Ts::load_from_from_str(TEST_ZH_CN_TS_CONTENT).unwrap();
+        let ts = Ts::load_from_str(TEST_ZH_CN_TS_CONTENT).unwrap();
         assert_eq!(ts.language, Some("zh_CN".to_string()));
         assert_eq!(ts.version, "2.1");
         assert_eq!(ts.contexts.len(), 1);
@@ -248,5 +248,16 @@ pub mod tests {
             fuzzy: 0,
         });
         assert_eq!(ts.get_message_stats().completeness_percentage(None), 3.0 / 4.0 * 100.0);
+    }
+
+    #[test]
+    fn tst_serialized_context_formatting() {
+        let ts = Ts::load_from_str(TEST_ZH_CN_TS_CONTENT).unwrap();
+        let mut writer = Writer::new_with_indent(Vec::new(), b' ', 4);
+        writer.write_serializable("translation", &ts.contexts[0].messages[0].translation).unwrap();
+        let serialized = String::from_utf8(writer.into_inner()).unwrap();
+        // If it's not a numerus_forms translation, there shouldn't be any extra new line at the end of the translation
+        // text *inside* the <translation> tag
+        assert_eq!(serialized.trim(), r#"<translation>海内存知己</translation>"#);
     }
 }
