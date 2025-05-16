@@ -15,7 +15,7 @@ pub enum CmdError {
     #[error("Fail to load Qt Linguist TS file {0:?} because: {1}")]
     LoadTsFile(PathBuf, #[source] i18n_file::linguist::TsLoadError),
     #[error("Fail to load Gettext PO/POT file {0:?} because: {1}")]
-    LoadPoError(PathBuf, #[source] i18n_file::gettext::PoLoadError),
+    LoadPoFile(PathBuf, #[source] i18n_file::gettext::PoLoadError),
     #[error("Fail to load Transifex project file because: {0}")]
     LoadTxProjectFile(#[from] TxProjectFileLoadError),
     #[error("Fail to match resources because: {0}")]
@@ -54,7 +54,7 @@ fn load_file_stats(file_path: &Path) -> Result<MessageStats, CmdError> {
             .map_err(|e| CmdError::LoadTsFile(file_path.to_path_buf(), e))?
             .get_message_stats(),
         I18nFileKind::Gettext => i18n_file::gettext::Po::load_from_file(&file_path)
-            .map_err(|e| CmdError::LoadPoError(file_path.to_path_buf(), e))?
+            .map_err(|e| CmdError::LoadPoFile(file_path.to_path_buf(), e))?
             .get_message_stats(),
     })
 }
@@ -145,9 +145,9 @@ struct TsResourceStats {
 #[derive(TeError, Debug)]
 pub enum TxProjectFileLoadError {
     #[error("Fail to load transifex.yaml file because: {0}")]
-    TxYamlLoadError(#[from] TxYamlLoadError),
+    TxYamlLoadError(#[from] LoadTxYamlError),
     #[error("Fail to load .tx/config project file because: {0}")]
-    ConvertError(#[from] TxConfigLoadError),
+    ConvertError(#[from] LoadTxConfigError),
 }
 
 /// Try find transifex.yaml in `project_root/transifex.yaml`.
