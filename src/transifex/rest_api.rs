@@ -8,7 +8,7 @@ use directories::BaseDirs;
 use serde::Deserialize;
 use thiserror::Error as TeError;
 
-use super::{tx_config_file::{load_transifexrc_file, TxConfigLoadError}, yaml_file::TxResourceLookupEntry};
+use super::{tx_config_file::{load_transifexrc_file, LoadTxConfigError}, yaml_file::TxResourceLookupEntry};
 
 pub struct TransifexRestApi {
     rest_hostname: String,
@@ -18,9 +18,9 @@ pub struct TransifexRestApi {
 #[derive(TeError, Debug)]
 pub enum TransifexRestApiError {
     #[error("Error making request: {0}")]
-    UreqError(#[from] ureq::Error),
+    Ureq(#[from] ureq::Error),
     #[error("Error parsing response: {0}")]
-    SerdeError(#[from] serde_json::Error),
+    Serde(#[from] serde_json::Error),
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -96,7 +96,7 @@ impl TransifexRestApi {
         }
     }
 
-    pub fn new_from_transifexrc() -> Result<Self, TxConfigLoadError> {
+    pub fn new_from_transifexrc() -> Result<Self, LoadTxConfigError> {
         let xdg_dirs = BaseDirs::new().expect("Not able to get xdg base directories");
         let transifexrc_file = xdg_dirs.home_dir().join(".transifexrc");
         let transifexrc = load_transifexrc_file(&transifexrc_file)?;
