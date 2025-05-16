@@ -113,8 +113,8 @@ pub enum Commands {
 pub enum CliError {
     ZhConv(#[from] crate::subcmd::zhconv::CmdError),
     Statistics(#[from] crate::subcmd::statistics::CmdError),
-    Yaml2TxConfig(#[from] crate::subcmd::yaml2txconfig::CmdY2TCError),
-    TxConfig2Yaml(#[from] crate::subcmd::txconfig2yaml::CmdTC2YError),
+    Yaml2TxConfig(#[from] crate::subcmd::yaml2txconfig::CmdError),
+    TxConfig2Yaml(#[from] crate::subcmd::txconfig2yaml::CmdError),
 }
 
 pub fn execute() -> Result<(), CliError> {

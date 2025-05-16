@@ -11,13 +11,13 @@ use thiserror::Error as TeError;
 use super::yaml_file::{self, TransifexYaml};
 
 #[derive(TeError, Debug)]
-pub enum TxConfigLoadError {
+pub enum LoadTxConfigError {
     #[error("File not found")]
     FileNotFound,
     #[error("Can not read file")]
     ReadFile(#[from] std::io::Error),
     #[error("Fail to deserialize file: {0}")]
-    ParseError(String),
+    ParseFile(String),
 }
 
 #[derive(Default)]
@@ -27,36 +27,36 @@ pub struct TransifexRcSection {
     pub token: String,
 }
 
-pub fn try_laod_tx_config_file(project_root: &PathBuf) -> Result<(PathBuf, TxConfig), TxConfigLoadError> {
+pub fn try_load_tx_config_file(project_root: &PathBuf) -> Result<(PathBuf, TxConfig), LoadTxConfigError> {
     let tx_config_file = project_root.join(".tx").join("config");
     if tx_config_file.is_file() {
         let tx_config = load_tx_config_file(&tx_config_file)?;
         return Ok((tx_config_file, tx_config));
     }
-    Err(TxConfigLoadError::FileNotFound)
+    Err(LoadTxConfigError::FileNotFound)
 }
 
-pub fn load_transifexrc_file(transifexrc_file: &PathBuf) -> Result<TransifexRcSection, TxConfigLoadError> {
+pub fn load_transifexrc_file(transifexrc_file: &PathBuf) -> Result<TransifexRcSection, LoadTxConfigError> {
     if !transifexrc_file.is_file() {
-        return Err(TxConfigLoadError::FileNotFound);
+        return Err(LoadTxConfigError::FileNotFound);
     }
     let source_content = fs::read_to_string(&transifexrc_file)?;
     TransifexRcSection::from_str(&source_content)
 }
 
 impl TransifexRcSection {
-    pub fn from_str(content: &str) -> Result<Self, TxConfigLoadError> {
+    pub fn from_str(content: &str) -> Result<Self, LoadTxConfigError> {
         let mut config = Ini::new_cs();
         config.read(content.to_string())
-          .map_err(|err| TxConfigLoadError::ParseError(err.to_string()))?;
+          .map_err(|err| LoadTxConfigError::ParseFile(err.to_string()))?;
 
         let mut tx_section = TransifexRcSection::default();
 
         let sections = config.sections();
         for section in sections {
             tx_section.host_section = section.to_string();
-            tx_section.rest_hostname = config.get(&section, "rest_hostname").ok_or(TxConfigLoadError::ParseError("missing rest_hostname key".to_string()))?;
-            tx_section.token = config.get(&section, "token").ok_or(TxConfigLoadError::ParseError("missing token key".to_string()))?;
+            tx_section.rest_hostname = config.get(&section, "rest_hostname").ok_or(LoadTxConfigError::ParseFile("missing rest_hostname key".to_string()))?;
+            tx_section.token = config.get(&section, "token").ok_or(LoadTxConfigError::ParseFile("missing token key".to_string()))?;
 
             break;
         };
@@ -70,19 +70,19 @@ pub struct TxConfig {
     pub resource_sections: Vec<TxConfigSectionResource>,
 }
 
-pub fn load_tx_config_file(tx_config_file: &PathBuf) -> Result<TxConfig, TxConfigLoadError> {
+pub fn load_tx_config_file(tx_config_file: &PathBuf) -> Result<TxConfig, LoadTxConfigError> {
     if !tx_config_file.is_file() {
-        return Err(TxConfigLoadError::FileNotFound);
+        return Err(LoadTxConfigError::FileNotFound);
     }
     let source_content = fs::read_to_string(&tx_config_file)?;
     TxConfig::from_str(&source_content)
 }
 
 impl TxConfig {
-    pub fn from_str(content: &str) -> Result<Self, TxConfigLoadError> {
+    pub fn from_str(content: &str) -> Result<Self, LoadTxConfigError> {
         let mut config = Ini::new_cs();
         config.read(content.to_string())
-            .map_err(|err| TxConfigLoadError::ParseError(err.to_string()))?;
+            .map_err(|err| LoadTxConfigError::ParseFile(err.to_string()))?;
         let mut main_section = TxConfigSectionMain::default();
         main_section.host = config.get("main", "host").unwrap_or("https://www.transifex.com".to_string());
         main_section.minimum_prec = config.getint("main", "minimum_perc").unwrap_or(None);
@@ -100,11 +100,11 @@ impl TxConfig {
             }
             let resource_section = TxConfigSectionResource {
                 resource_full_slug: section.to_string(),
-                file_filter: config.get(&section, "file_filter").ok_or(TxConfigLoadError::ParseError("missing file_filter key".to_string()))?,
+                file_filter: config.get(&section, "file_filter").ok_or(LoadTxConfigError::ParseFile("missing file_filter key".to_string()))?,
                 minimum_prec: config.getint(&section, "minimum_perc").unwrap_or(None),
-                source_file: config.get(&section, "source_file").ok_or(TxConfigLoadError::ParseError("missing source_file key".to_string()))?,
-                source_lang: config.get(&section, "source_lang").ok_or(TxConfigLoadError::ParseError("missing source_lang key".to_string()))?,
-                type_attr: config.get(&section, "type").ok_or(TxConfigLoadError::ParseError("missing type key".to_string()))?,
+                source_file: config.get(&section, "source_file").ok_or(LoadTxConfigError::ParseFile("missing source_file key".to_string()))?,
+                source_lang: config.get(&section, "source_lang").ok_or(LoadTxConfigError::ParseFile("missing source_lang key".to_string()))?,
+                type_attr: config.get(&section, "type").ok_or(LoadTxConfigError::ParseFile("missing type key".to_string()))?,
             };
             tx_config.resource_sections.push(resource_section);
         };
@@ -177,11 +177,11 @@ pub struct TxConfigSectionResource {
 
 impl TxConfigSectionResource {
     #[cfg(test)]
-    pub fn get_opr_slugs(&self) -> Result<(String, String, String), TxConfigLoadError> {
+    pub fn get_opr_slugs(&self) -> Result<(String, String, String), LoadTxConfigError> {
         // regex match section name, and extract organization_slug, project_slug, resource_slug.
         // section name format: o:organization_slug:p:project_slug:r:resource_slug
         let re = regex::Regex::new(r"o:(?P<organization_slug>[^:]+):p:(?P<project_slug>[^:]+):r:(?P<resource_slug>[^:]+)").unwrap();
-        let caps = re.captures(&self.resource_full_slug).ok_or(TxConfigLoadError::ParseError("Invalid section name".to_string()))?;
+        let caps = re.captures(&self.resource_full_slug).ok_or(LoadTxConfigError::ParseFile("Invalid section name".to_string()))?;
         let organization_slug = caps.name("organization_slug").unwrap().as_str();
         let project_slug = caps.name("project_slug").unwrap().as_str();
         let resource_slug = caps.name("resource_slug").unwrap().as_str();
