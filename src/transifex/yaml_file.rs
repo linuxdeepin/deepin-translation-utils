@@ -114,7 +114,7 @@ pub struct Settings {
 }
 
 #[derive(TeError, Debug)]
-pub enum TxYamlLoadError {
+pub enum LoadTxYamlError {
     #[error("File not found")]
     FileNotFound,
     #[error("Can not read file")]
@@ -122,10 +122,10 @@ pub enum TxYamlLoadError {
     #[error("Fail to deserialize file: {0}")]
     Serde(#[from] serde_yml::Error),
     #[error("Fail to convert from .tx/config file: {0:?}")]
-    ConvertError(#[from] TxConfigLoadError),
+    ConvertFile(#[from] LoadTxConfigError),
 }
 
-pub fn try_laod_transifex_yaml_file(project_root: &PathBuf) -> Result<(PathBuf, TransifexYaml), TxYamlLoadError> {
+pub fn try_load_transifex_yaml_file(project_root: &PathBuf) -> Result<(PathBuf, TransifexYaml), LoadTxYamlError> {
     // try find transifex.yaml in project_root/transifex.yaml and if not found, try project_root/.tx/transifex.yaml. If still not found, return error.
     let transifex_yaml_file = project_root.join("transifex.yaml");
     if transifex_yaml_file.is_file() {
@@ -138,12 +138,12 @@ pub fn try_laod_transifex_yaml_file(project_root: &PathBuf) -> Result<(PathBuf, 
         return Ok((transifex_yaml_file, tx_yaml));
     }
 
-    Err(TxYamlLoadError::FileNotFound)
+    Err(LoadTxYamlError::FileNotFound)
 }
 
-pub fn load_tx_yaml_file(transifex_yaml_file: &PathBuf) -> Result<TransifexYaml, TxYamlLoadError> {
+pub fn load_tx_yaml_file(transifex_yaml_file: &PathBuf) -> Result<TransifexYaml, LoadTxYamlError> {
     if !transifex_yaml_file.is_file() {
-        return Err(TxYamlLoadError::FileNotFound);
+        return Err(LoadTxYamlError::FileNotFound);
     }
     let source_content = fs::read_to_string(&transifex_yaml_file)?;
     Ok(serde_yml::from_str::<TransifexYaml>(source_content.as_str())?)

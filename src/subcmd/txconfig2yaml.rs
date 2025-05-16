@@ -9,15 +9,15 @@ use thiserror::Error as TeError;
 use crate::transifex::{yaml_file::*, tx_config_file::*};
 
 #[derive(TeError, Debug)]
-pub enum CmdTC2YError {
+pub enum CmdError {
     #[error("Fail to load .tx/config file because: {0}")]
-    TxConfigLoadError(#[from] TxConfigLoadError),
+    LoadTxConfig(#[from] LoadTxConfigError),
     #[error("Fail to save transifex.yaml file because: {0}")]
-    TransifexYamlSaveError(#[from] serde_yml::Error),
+    SaveTransifexYaml(#[from] serde_yml::Error),
 }
 
-pub fn subcmd_txconfig2yaml(project_root: &PathBuf) -> Result<(), CmdTC2YError> {
-    let (tx_config_path, tx_config) = try_laod_tx_config_file(project_root)?;
+pub fn subcmd_txconfig2yaml(project_root: &PathBuf) -> Result<(), CmdError> {
+    let (tx_config_path, tx_config) = try_load_tx_config_file(project_root)?;
     let tx_yaml = tx_config.to_transifex_yaml();
     let tx_yaml_path = tx_config_path.parent().unwrap().join("transifex.yaml");
     if tx_yaml_path.exists() {

@@ -15,9 +15,9 @@ use crate::transifex::{
 };
 
 #[derive(TeError, Debug)]
-pub enum CmdY2TCError {
+pub enum CmdError {
     #[error("Fail to load transifex.yaml file because: {0}")]
-    TxYamlLoadError(#[from] TxYamlLoadError),
+    LoadTxYaml(#[from] LoadTxYamlError),
 }
 
 fn get_github_repository_from_user_input(project_root: &PathBuf, github_repository_hint: Option<String>) -> String {
@@ -120,8 +120,8 @@ pub fn create_linked_resources_table(organization_slug: &str, project_slug: Opti
     lookup_table
 }
 
-pub fn subcmd_yaml2txconfig(project_root: &PathBuf, force_online: bool, github_repository: Option<String>, organization_slug: String, project_slug: Option<String>) -> Result<(), CmdY2TCError> {
-    let (transifex_yaml_file, tx_yaml) = try_laod_transifex_yaml_file(project_root)?;
+pub fn subcmd_yaml2txconfig(project_root: &PathBuf, force_online: bool, github_repository: Option<String>, organization_slug: String, project_slug: Option<String>) -> Result<(), CmdError> {
+    let (transifex_yaml_file, tx_yaml) = try_load_transifex_yaml_file(project_root)?;
     println!("Found Transifex project config file at: {transifex_yaml_file:?}");
 
     let github_repository = get_github_repository_from_user_input(project_root, github_repository);
