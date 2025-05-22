@@ -45,7 +45,7 @@ pub enum Commands {
         content: String,
     },
 
-    #[command(name = "statistics")]
+    #[command(name = "statistics", visible_alias = "stat", visible_alias = "stats")]
     #[command(
         about = "Prints translation statistics of the provided project",
         long_about = "Prints translation statistics of the provided project according to transifex.yaml or .tx/config file.\n\n\
