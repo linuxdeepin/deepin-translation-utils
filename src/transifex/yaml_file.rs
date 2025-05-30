@@ -31,6 +31,7 @@ pub struct TxResourceLookupEntry {
 impl TransifexYaml {
     pub fn to_tx_config(&self, github_repository: String, lookup_table: Vec<TxResourceLookupEntry>) -> TxConfig {
         let mut resource_sections = Vec::<TxConfigSectionResource>::new();
+        let mut unknown_count = 0; // avoid duplicate resource name when attempting to convert to .tx/config file
         for filter in &self.filters {
             let mut resource_section = TxConfigSectionResource::default();
             resource_section.source_file = filter.source.clone();
@@ -44,7 +45,8 @@ impl TransifexYaml {
             }) {
                 resource_section.resource_full_slug = lookup_entry.transifex_resource_id.clone();
             } else {
-                resource_section.resource_full_slug = format!("o:{}:p:{}:r:{}", "unknown-org", "unknown-proj", "unknown-res")
+                unknown_count += 1;
+                resource_section.resource_full_slug = format!("o:{}:p:{}:r:{}-{}", "unknown-org", "unknown-proj", "unknown-res", unknown_count);
             }
             
             resource_sections.push(resource_section);
@@ -175,6 +177,11 @@ filters:
     file_format: QT
     source_language: en_US
     translation_files_expression: shell-launcher-applet/translations/org.deepin.ds.dock.launcherapplet_<lang>.ts
+  - filter_type: file
+    source_file: dcc-network/translations/network_en_US.ts
+    file_format: QT
+    source_language: en_US
+    translation_files_expression: dcc-network/translations/network_<lang>.ts
 settings:
   pr_branch_name: transifex_update_<br_unique_id>
 "#;
@@ -182,12 +189,21 @@ settings:
     #[test]
     fn tst_parse_tx_yaml_content() {
         let tx_yaml: TransifexYaml = serde_yml::from_str::<TransifexYaml>(TEST_TX_YAML_CONTENT).unwrap();
-        assert_eq!(tx_yaml.filters.len(), 1);
+        assert_eq!(tx_yaml.filters.len(), 2);
         assert_eq!(tx_yaml.filters[0].type_attr, "file");
         assert_eq!(tx_yaml.filters[0].source, "shell-launcher-applet/translations/org.deepin.ds.dock.launcherapplet.ts");
         assert_eq!(tx_yaml.filters[0].format, "QT");
         assert_eq!(tx_yaml.filters[0].source_lang, "en_US");
         assert_eq!(tx_yaml.filters[0].target_pattern, "shell-launcher-applet/translations/org.deepin.ds.dock.launcherapplet_<lang>.ts");
+    }
+
+    #[test]
+    fn tst_convert_to_tx_config() {
+        let tx_yaml: TransifexYaml = serde_yml::from_str::<TransifexYaml>(TEST_TX_YAML_CONTENT).unwrap();
+        let tx_config = tx_yaml.to_tx_config("user/repo".to_string(), vec![]);
+        assert_eq!(tx_config.resource_sections[0].resource_full_slug, "o:unknown-org:p:unknown-proj:r:unknown-res-1");
+        assert_eq!(tx_config.resource_sections[0].file_filter, "shell-launcher-applet/translations/org.deepin.ds.dock.launcherapplet_<lang>.ts");
+        assert_eq!(tx_config.resource_sections[1].resource_full_slug, "o:unknown-org:p:unknown-proj:r:unknown-res-2");
     }
 
     #[test]
