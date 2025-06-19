@@ -60,7 +60,7 @@ pub enum Commands {
         #[clap(long, action = clap::ArgAction::SetTrue, default_value_t = false)]
         standalone_percentage: bool,
         /// languages that needs to be included in the statistics, by default (empty), all languages will be included
-        #[arg(short = 'l', long, default_value = "", value_delimiter = ',')]
+        #[arg(short = 'l', long, value_delimiter = ',')]
         accept_languages: Vec<String>,
         /// languages that needs to be excluded from the statistics
         #[arg(short, long, default_value = "en,en_US", value_delimiter = ',')]
