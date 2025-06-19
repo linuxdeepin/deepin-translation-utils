@@ -23,7 +23,7 @@ pub struct Ts {
     pub language: Option<String>,
     #[serde(rename = "@version")]
     pub version: String,
-    #[serde(rename = "context")]
+    #[serde(rename = "context", default)]
     pub contexts: Vec<Context>,
 }
 
@@ -199,6 +199,10 @@ pub mod tests {
     use super::super::common::MessageStats;
     use super::*;
 
+    pub const TEST_EMPTY_TS_CONTENT: &str = r#"<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
+<TS version="2.1"/>"#;
+
     pub const TEST_ZH_CN_TS_CONTENT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <?xml version="1.0" ?><!DOCTYPE TS><TS language="zh_CN" version="2.1">
 <context>
@@ -231,6 +235,11 @@ pub mod tests {
 
     #[test]
     fn tst_parse_ts_content() {
+        let empty_ts: Ts = Ts::load_from_str(TEST_EMPTY_TS_CONTENT).unwrap();
+        assert_eq!(empty_ts.language, None);
+        assert_eq!(empty_ts.version, "2.1");
+        assert_eq!(empty_ts.contexts.len(), 0);
+
         let ts = Ts::load_from_str(TEST_ZH_CN_TS_CONTENT).unwrap();
         assert_eq!(ts.language, Some("zh_CN".to_string()));
         assert_eq!(ts.version, "2.1");
