@@ -59,6 +59,10 @@ pub enum Commands {
         sort_by: crate::subcmd::statistics::StatsSortBy,
         #[clap(long, action = clap::ArgAction::SetTrue, default_value_t = false)]
         standalone_percentage: bool,
+        /// languages that needs to be included in the statistics, by default (empty), all languages will be included
+        #[arg(short = 'l', long, default_value = "", value_delimiter = ',')]
+        accept_languages: Vec<String>,
+        /// languages that needs to be excluded from the statistics
         #[arg(short, long, default_value = "en,en_US", value_delimiter = ',')]
         ignore_languages: Vec<String>,
     },
@@ -128,8 +132,8 @@ pub fn execute() -> Result<(), CliError> {
         Commands::ZhConvPlain { target_languages, content } => {
             subcmd::subcmd_zhconv_plain(&target_languages, &content)?;
         },
-        Commands::Statistics { project_root, format, sort_by, standalone_percentage, ignore_languages } => {
-            subcmd::subcmd_statistics(&project_root, format, sort_by, standalone_percentage, ignore_languages)?;
+        Commands::Statistics { project_root, format, sort_by, standalone_percentage, accept_languages, ignore_languages } => {
+            subcmd::subcmd_statistics(&project_root, format, sort_by, standalone_percentage, accept_languages, ignore_languages)?;
         },
         Commands::Yaml2TxConfig { project_root, force_online, github_repository, organization_slug, project_slug } => {
             subcmd::subcmd_yaml2txconfig(&project_root, force_online, github_repository, organization_slug, project_slug)?;

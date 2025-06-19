@@ -171,7 +171,7 @@ fn try_load_transifex_project_file(project_root: &PathBuf) -> Result<(PathBuf, T
     })
 }
 
-pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: StatsSortBy, standalone_percentage: bool, ignore_languages: Vec<String>) -> Result<(), CmdError> {
+pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: StatsSortBy, standalone_percentage: bool, accept_languages: Vec<String>, ignore_languages: Vec<String>) -> Result<(), CmdError> {
     let (transifex_yaml_file, tx_yaml) = try_load_transifex_project_file(project_root)?;
     if matches!(format, StatsFormat::PlainTable) {
         println!("Found Transifex project config file at: {transifex_yaml_file:?}");
@@ -206,6 +206,9 @@ pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: S
 
         let matched_resources = filter.match_target_files(project_root).or_else(|e| { Err(CmdError::MatchResources(e)) })?;
         for (lang, target_file) in matched_resources {
+            if !accept_languages.is_empty() && !accept_languages.contains(&lang) {
+                continue;
+            }
             if ignore_languages.contains(&lang) {
                 continue;
             }
