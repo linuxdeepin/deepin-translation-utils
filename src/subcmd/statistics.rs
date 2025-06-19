@@ -20,8 +20,10 @@ pub enum CmdError {
     LoadTxProjectFile(#[from] TxProjectFileLoadError),
     #[error("Fail to match resources because: {0}")]
     MatchResources(#[source] std::io::Error),
-    #[error("Fail to serialize stats: {0}")]
-    Serde(#[from] serde_yml::Error),
+    #[error("Fail to serialize stats to YAML: {0}")]
+    SerdeYaml(#[from] serde_yml::Error),
+    #[error("Fail to serialize stats to JSON: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 #[derive(clap::ValueEnum, Clone, Default, Copy, Debug)]
@@ -29,6 +31,7 @@ pub enum StatsFormat {
     #[default]
     PlainTable,
     Yaml,
+    Json,
 }
 
 #[derive(clap::ValueEnum, Clone, Default, Copy, Debug)]
@@ -123,6 +126,12 @@ impl ProjectResourceStats {
     pub fn print_stats_yaml(&self) -> Result<(), serde_yml::Error> {
         let yaml_str = serde_yml::to_string::<Self>(self)?;
         println!("{}", yaml_str);
+        Ok(())
+    }
+
+    pub fn print_stats_json(&self) -> Result<(), serde_json::Error> {
+        let json_str = serde_json::to_string_pretty(self)?;
+        println!("{}", json_str);
         Ok(())
     }
 }
@@ -220,6 +229,7 @@ pub fn subcmd_statistics(project_root: &PathBuf, format: StatsFormat, sort_by: S
     match format {
         StatsFormat::PlainTable => project_stats.print_state_plain_table(standalone_percentage, sort_by),
         StatsFormat::Yaml => project_stats.print_stats_yaml()?,
+        StatsFormat::Json => project_stats.print_stats_json()?,
     }
 
     Ok(())
