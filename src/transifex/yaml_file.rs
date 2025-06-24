@@ -84,28 +84,78 @@ impl Filter {
         let Some(target_filename_pattern) = target_filename_pattern.to_str() else {
             return Err(std::io::Error::new(std::io::ErrorKind::Other, "File name not valid"));
         };
-        let Some(target_filter_pattern) = create_filter_pattern(target_filename_pattern) else {
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, "Filter pattern not valid"));
-        };
-        let Some(target_parent) = target_pattern_path.parent() else {
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, "Parent dir not found"));
-        };
-        let target_files = target_parent.read_dir()?;
-        let mut matched_files = Vec::<(String, PathBuf)>::new();
-        for file in target_files {
-            let file = file?;
-            let file_name = file.file_name();
-            let Some(file_name) = file_name.to_str() else {
-                continue;
+        if target_filename_pattern.contains("<lang>") {
+            let Some(target_filter_pattern) = create_filter_pattern(target_filename_pattern) else {
+                return Err(std::io::Error::new(std::io::ErrorKind::Other, "Filter pattern not valid"));
             };
-            target_filter_pattern.captures(file_name).and_then(|captures| {
-                captures.get(1).map(|lang_code| {
-                    let lang_code = lang_code.as_str();
-                    matched_files.push((lang_code.to_string(), file.path()));
-                })
-            });
-        };
-        Ok(matched_files)
+            let Some(target_parent) = target_pattern_path.parent() else {
+                return Err(std::io::Error::new(std::io::ErrorKind::Other, "Parent dir not found"));
+            };
+            let target_files = target_parent.read_dir()?;
+            let mut matched_files = Vec::<(String, PathBuf)>::new();
+            for file in target_files {
+                let file = file?;
+                let file_name = file.file_name();
+                let Some(file_name) = file_name.to_str() else {
+                    continue;
+                };
+                target_filter_pattern.captures(file_name).and_then(|captures| {
+                    captures.get(1).map(|lang_code| {
+                        let lang_code = lang_code.as_str();
+                        matched_files.push((lang_code.to_string(), file.path()));
+                    })
+                });
+            };
+            Ok(matched_files)
+        } else {
+            // target_pattern_path is something like `./path/to/<lang>/the/file.ext`
+            // let's get the basedir before <lang> (i.e. `./path/to/`), then match folders under that path
+            // `<lang>` is a language code.
+            // then get file based on the matched folders, e.g. `./path/to/es/the/file.ext` and `./path/to/zh_CN/the/file.ext`
+            // if `<lang>` is not a part of the path, return error.
+            let mut parent_dir = PathBuf::new();
+            let mut remain_path : Option<PathBuf> = None;
+            let mut components = target_pattern_path.components();
+            // while components.next() is not <lang>, push to parent_dir
+            while let Some(component) = components.next() {
+                if let std::path::Component::Normal(normal_path) = component {
+                    if normal_path != "<lang>" {
+                        parent_dir.push(normal_path);
+                    } else {
+                        remain_path = Some(components.as_path().to_path_buf());
+                        break;
+                    }
+                } else {
+                    parent_dir.push(component);
+                }
+            };
+            if remain_path.is_none() {
+                return Err(std::io::Error::new(std::io::ErrorKind::Other, "Missing <lang> inside the pattern."));
+            }
+            let remain_path = remain_path.unwrap();
+            let language_folders = parent_dir.read_dir()?;
+            let mut matched_files = Vec::<(String, PathBuf)>::new();
+            let language_code_regex = regex::Regex::new(r"[a-z_A-Z]{2,6}").unwrap();
+            for language_folder in language_folders {
+                // check if language_folder is a valid language code ([a-z_A-Z]{{2,6}}) in regex
+                if let Ok(language_folder) = language_folder {
+                    let language_folder_dir = language_folder.path();
+                    let language_folder = language_folder.file_name();
+                    let Some(language_folder) = language_folder.to_str() else {
+                        continue;
+                    };
+                    if !language_code_regex.is_match(language_folder) {
+                        continue;
+                    }
+                    let matched_file = language_folder_dir.join(&remain_path);
+                    if !matched_file.is_file() {
+                        continue;
+                    }
+                    matched_files.push((language_folder.to_string(), matched_file));
+                }
+            }
+            Ok(matched_files)
+        }
     }
 }
 
