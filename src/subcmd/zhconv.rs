@@ -21,6 +21,8 @@ pub enum CmdError {
     DifferentContexts(String),
     #[error("Target file for language {0:?} has different number of messages (Source {1:?} != Target {2:?})")]
     DifferentMessages(String, usize, usize),
+    #[error("Target language ({0:?})'s source string doesn't match (Source: {1:?} != Target: {2:?}), did you forget to run `update_translations` beforehand?")]
+    DifferentMessage(String, String, String),
     #[error("Fail to parse language code")]
     ParseLanguageCode,
     #[error("Missing language code in Linguist TS file")]
@@ -76,6 +78,9 @@ fn translate_ts_content(source_content: &Ts, target_content: &mut Ts) -> Result<
             }
             if matches!(source_message.translation.type_attr, Some(TranslationType::Unfinished)) {
                 continue;
+            }
+            if source_message.source != message.source {
+                return Err(CmdError::DifferentMessage(language_code.clone(), source_message.source.clone(), message.source.clone()));
             }
             if let Some(value) = &source_message.translation.value {
                 message.fill_translation(&zhconv_wrapper(&value, &language_code)?);
