@@ -110,6 +110,15 @@ pub enum Commands {
         #[arg(short, long, default_value = "linuxdeepin")]
         organization_slug: String,
     },
+    #[command(name = "gentxyaml")]
+    #[command(
+        about = "Generate transifex.yaml by scanning translation files in the repository",
+        long_about = "Scan the repository for translation files (.ts and .po) and generate a corresponding transifex.yaml configuration file.\n\n\
+            This is useful for new projects that don't have any existing configuration files.",
+    )]
+    GenTxYaml {
+        project_root: PathBuf,
+    },
 }
 
 #[derive(TeError, Debug)]
@@ -119,6 +128,7 @@ pub enum CliError {
     Statistics(#[from] crate::subcmd::statistics::CmdError),
     Yaml2TxConfig(#[from] crate::subcmd::yaml2txconfig::CmdError),
     TxConfig2Yaml(#[from] crate::subcmd::txconfig2yaml::CmdError),
+    GenTxYaml(#[from] crate::subcmd::gentxyaml::CmdError),
 }
 
 pub fn execute() -> Result<(), CliError> {
@@ -143,6 +153,9 @@ pub fn execute() -> Result<(), CliError> {
         },
         Commands::MonoTxConfig { project_root, force_online, organization_slug } => {
             subcmd::subcmd_monotxconfig(&project_root, force_online, organization_slug);
+        },
+        Commands::GenTxYaml { project_root } => {
+            subcmd::subcmd_gentxyaml(&project_root)?;
         },
     }
 

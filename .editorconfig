@@ -1,0 +1,3 @@
+# remove trailing whitespace
+[*]
+trim_trailing_whitespace = true
