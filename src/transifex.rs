@@ -4,4 +4,5 @@
 
 pub mod yaml_file;
 pub mod tx_config_file;
+pub mod project_file;
 pub mod rest_api;

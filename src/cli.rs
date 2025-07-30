@@ -49,7 +49,7 @@ pub enum Commands {
     #[command(
         about = "Prints translation statistics of the provided project",
         long_about = "Prints translation statistics of the provided project according to transifex.yaml or .tx/config file.\n\n\
-            Only Qt Linguist-based resources are processed, other resources like PO-based ones are ignored.",
+            Only Qt Linguist-based and PO-based resources are processed, other resources are ignored.",
     )]
     Statistics {
         project_root: PathBuf,
