@@ -11,6 +11,7 @@
   - 如果对应的资源信息本地已有缓存，也可以使用对应的缓存信息而不进行 API 请求。
 - 根据 `.tx/config` 生成 Transifex GitHub 集成配置文件 `transifex.yaml`。
 - 根据给定的 Transifex 组织，生成一个包含所有关联资源的 `.tx/config`。
+- 根据所给定仓库内的(`.po` 与 `.ts`)翻译文件，生成 `.tx/transifex.yaml` 或 `.tx/config` 配置文件。
 
 ## 用法
 
@@ -22,5 +23,4 @@
 
 ## 注意：
 
-- 由于 `serde_xml_rs` 存在[已知问题](https://github.com/RReverser/serde-xml-rs/issues/186)，因此本程序中使用了（启用了 `serialize` 特性的）`quick_xml` 来解析和写入 XML 文件。
 - 除非你绝对确定你在做什么，否则不要在使用 `monotxconfig` 子命令生成 `.tx/config` 后盲目拉取翻译资源。直接从 Transifex 拉取所有翻译资源的过程会特别慢。
