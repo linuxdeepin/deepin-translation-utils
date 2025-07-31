@@ -128,6 +128,9 @@ pub enum Commands {
         /// Output format for the generated configuration file
         #[arg(short, long, default_value = "yaml", value_enum)]
         format: TxConfigFormat,
+        /// Paths to ignore during scanning (relative to project root)
+        #[arg(short, long, default_value = "build", value_delimiter = ',')]
+        ignore_paths: Vec<String>,
     },
 }
 
@@ -164,8 +167,8 @@ pub fn execute() -> Result<(), CliError> {
         Commands::MonoTxConfig { project_root, force_online, organization_slug } => {
             subcmd::subcmd_monotxconfig(&project_root, force_online, organization_slug);
         },
-        Commands::GenTxCfg { project_root, format } => {
-            subcmd::subcmd_gentxcfg(&project_root, format)?;
+        Commands::GenTxCfg { project_root, format, ignore_paths } => {
+            subcmd::subcmd_gentxcfg(&project_root, format, ignore_paths)?;
         },
     }
 

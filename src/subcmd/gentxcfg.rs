@@ -20,11 +20,11 @@ pub enum CmdError {
     UnknownI18nFileType { path: PathBuf },
 }
 
-pub fn subcmd_gentxcfg(project_root: &PathBuf, format: crate::cli::TxConfigFormat) -> Result<(), CmdError> {
+pub fn subcmd_gentxcfg(project_root: &PathBuf, format: crate::cli::TxConfigFormat, ignore_paths: Vec<String>) -> Result<(), CmdError> {
     println!("Scanning directory: {:?}", project_root);
 
     // Scan for all translation files in the project root directory
-    let all_translation_files = scan_all_translation_files(project_root)?;
+    let all_translation_files = scan_all_translation_files(project_root, &ignore_paths)?;
 
     if all_translation_files.is_empty() {
         println!("No translation files (.ts or .po) found");
@@ -86,12 +86,13 @@ pub fn subcmd_gentxcfg(project_root: &PathBuf, format: crate::cli::TxConfigForma
     Ok(())
 }
 
-fn scan_all_translation_files(project_root: &PathBuf) -> Result<Vec<PathBuf>, CmdError> {
+fn scan_all_translation_files(project_root: &PathBuf, ignore_paths: &[String]) -> Result<Vec<PathBuf>, CmdError> {
     let mut translation_files = Vec::new();
 
     for entry in WalkDir::new(project_root)
         .follow_links(false)
         .into_iter()
+        .filter_entry(|e| !should_ignore_entry(e, project_root, ignore_paths))
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
@@ -108,6 +109,38 @@ fn scan_all_translation_files(project_root: &PathBuf) -> Result<Vec<PathBuf>, Cm
     }
 
     Ok(translation_files)
+}
+
+fn should_ignore_entry(entry: &walkdir::DirEntry, project_root: &PathBuf, ignore_paths: &[String]) -> bool {
+    let path = entry.path();
+
+    // Get relative path from project root
+    if let Ok(relative_path) = path.strip_prefix(project_root) {
+        let relative_path_str = relative_path.to_string_lossy();
+
+        for ignore_pattern in ignore_paths {
+            // Skip empty patterns
+            if ignore_pattern.is_empty() {
+                continue;
+            }
+
+            // Check if the relative path starts with the ignore pattern
+            if relative_path_str.starts_with(ignore_pattern) {
+                return true;
+            }
+
+            // Check if any component of the path matches the ignore pattern
+            for component in relative_path.components() {
+                if let std::path::Component::Normal(name) = component {
+                    if name.to_string_lossy() == ignore_pattern.as_str() {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    false
 }
 
 fn identify_source_files(project_root: &PathBuf, all_files: &[PathBuf]) -> Result<Vec<PathBuf>, CmdError> {
