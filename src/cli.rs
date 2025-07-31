@@ -3,9 +3,16 @@
 // SPDX-License-Identifier: MIT
 
 use std::path::PathBuf;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use thiserror::Error as TeError;
 
+#[derive(Debug, Clone, ValueEnum)]
+pub enum TxConfigFormat {
+    /// Generate .tx/transifex.yaml file
+    Yaml,
+    /// Generate .tx/config file
+    Txconfig,
+}
 
 #[derive(Debug, Parser)]
 pub struct Cli {
@@ -110,14 +117,17 @@ pub enum Commands {
         #[arg(short, long, default_value = "linuxdeepin")]
         organization_slug: String,
     },
-    #[command(name = "gentxyaml")]
+    #[command(name = "gentxcfg")]
     #[command(
-        about = "Generate transifex.yaml by scanning translation files in the repository",
-        long_about = "Scan the repository for translation files (.ts and .po) and generate a corresponding transifex.yaml configuration file.\n\n\
-            This is useful for new projects that don't have any existing configuration files.",
+        about = "Generate Transifex configuration by scanning translation files in the repository",
+        long_about = "Scan the repository for translation files (.ts and .po) and generate a corresponding Transifex configuration file.\n\n\
+            This is useful for new projects that don't have any existing configuration files. The configuration will be saved to the .tx/ directory.",
     )]
-    GenTxYaml {
+    GenTxCfg {
         project_root: PathBuf,
+        /// Output format for the generated configuration file
+        #[arg(short, long, default_value = "yaml", value_enum)]
+        format: TxConfigFormat,
     },
 }
 
@@ -128,7 +138,7 @@ pub enum CliError {
     Statistics(#[from] crate::subcmd::statistics::CmdError),
     Yaml2TxConfig(#[from] crate::subcmd::yaml2txconfig::CmdError),
     TxConfig2Yaml(#[from] crate::subcmd::txconfig2yaml::CmdError),
-    GenTxYaml(#[from] crate::subcmd::gentxyaml::CmdError),
+    GenTxCfg(#[from] crate::subcmd::gentxcfg::CmdError),
 }
 
 pub fn execute() -> Result<(), CliError> {
@@ -154,8 +164,8 @@ pub fn execute() -> Result<(), CliError> {
         Commands::MonoTxConfig { project_root, force_online, organization_slug } => {
             subcmd::subcmd_monotxconfig(&project_root, force_online, organization_slug);
         },
-        Commands::GenTxYaml { project_root } => {
-            subcmd::subcmd_gentxyaml(&project_root)?;
+        Commands::GenTxCfg { project_root, format } => {
+            subcmd::subcmd_gentxcfg(&project_root, format)?;
         },
     }
 

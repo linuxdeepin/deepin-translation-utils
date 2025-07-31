@@ -14,13 +14,13 @@ use crate::transifex::yaml_file::{TransifexYaml, Filter, Settings};
 pub enum CmdError {
     #[error("Failed to read directory: {0}")]
     ReadDir(#[from] std::io::Error),
-    #[error("Failed to serialize transifex.yaml: {0}")]
+    #[error("Failed to serialize configuration: {0}")]
     SerializeYaml(#[from] serde_yml::Error),
     #[error("Unknown translation file type: {path:?}")]
     UnknownI18nFileType { path: PathBuf },
 }
 
-pub fn subcmd_gentxyaml(project_root: &PathBuf) -> Result<(), CmdError> {
+pub fn subcmd_gentxcfg(project_root: &PathBuf, format: crate::cli::TxConfigFormat) -> Result<(), CmdError> {
     println!("Scanning directory: {:?}", project_root);
 
     // Scan for all translation files in the project root directory
@@ -44,19 +44,43 @@ pub fn subcmd_gentxyaml(project_root: &PathBuf) -> Result<(), CmdError> {
         println!("- {:?}", file);
     }
 
-    // Generate transifex.yaml configuration
+    // Generate transifex configuration
     let tx_yaml = generate_transifex_yaml(project_root, &source_files)?;
 
-    // Save file
-    let output_path = project_root.join("transifex.yaml");
-    if output_path.exists() {
-        println!("Note: {:?} file already exists, not overwriting.", output_path);
-        println!("You can use the following content to update the file manually:\n");
-        println!("{}", serde_yml::to_string(&tx_yaml)?);
-    } else {
-        let yaml_content = serde_yml::to_string(&tx_yaml)?;
-        fs::write(&output_path, yaml_content)?;
-        println!("Generated transifex.yaml file: {}", output_path.display());
+    // Create .tx directory if it doesn't exist
+    let tx_dir = project_root.join(".tx");
+    if !tx_dir.exists() {
+        fs::create_dir_all(&tx_dir)?;
+        println!("Created .tx directory");
+    }
+
+    // Generate and save file based on format
+    match format {
+        crate::cli::TxConfigFormat::Yaml => {
+            let output_path = tx_dir.join("transifex.yaml");
+            if output_path.exists() {
+                println!("Note: {:?} file already exists, not overwriting.", output_path);
+                println!("You can use the following content to update the file manually:\n");
+                println!("{}", serde_yml::to_string(&tx_yaml)?);
+            } else {
+                let yaml_content = serde_yml::to_string(&tx_yaml)?;
+                fs::write(&output_path, yaml_content)?;
+                println!("Generated transifex.yaml file: {}", output_path.display());
+            }
+        },
+        crate::cli::TxConfigFormat::Txconfig => {
+            let tx_config = tx_yaml.to_tx_config("".to_string(), vec![]);
+            let output_path = tx_dir.join("config");
+            if output_path.exists() {
+                println!("Note: {:?} file already exists, not overwriting.", output_path);
+                println!("You can use the following content to update the file manually:\n");
+                println!("{}", tx_config.to_str());
+            } else {
+                let config_content = tx_config.to_str();
+                fs::write(&output_path, config_content)?;
+                println!("Generated .tx/config file: {}", output_path.display());
+            }
+        },
     }
 
     Ok(())
