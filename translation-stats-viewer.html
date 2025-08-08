@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepin Translation Statistics Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .upload-area {
+            padding: 40px;
+            text-align: center;
+            border: 3px dashed #e0e0e0;
+            margin: 30px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #4facfe;
+            background: #f8f9ff;
+        }
+
+        .upload-area.drag-over {
+            border-color: #4facfe;
+            background: #f0f8ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #4facfe;
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
+        }
+
+        .stats-container {
+            padding: 30px;
+            display: none;
+        }
+
+        .overall-stats {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .overall-stats h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+            font-weight: 300;
+        }
+
+        .load-new-file-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .load-new-file-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .file-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            backdrop-filter: blur(10px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .finished { color: #4CAF50; }
+        .unfinished { color: #FF9800; }
+        .total { color: #2196F3; }
+        .progress { color: #9C27B0; }
+
+        .file-list {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .file-list h3 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 1.5em;
+        }
+
+        .file-item {
+            background: white;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .file-header {
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .file-path {
+            font-weight: 500;
+            font-size: 1.1em;
+        }
+
+        .file-progress {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .file-details {
+            padding: 20px;
+            display: none;
+            background: #fafafa;
+        }
+
+        .file-details.show {
+            display: block;
+        }
+
+        .lang-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .lang-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4facfe;
+        }
+
+        .lang-code {
+            font-weight: bold;
+            color: #4facfe;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .lang-progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .lang-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s ease;
+        }
+
+        .lang-stats-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .expand-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .expand-icon.rotated {
+            transform: rotate(180deg);
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px;
+            border-left: 4px solid #c62828;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .filter-container {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9em;
+        }
+
+        .filter-input {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 0.9em;
+            transition: border-color 0.3s ease;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+
+        .language-search-container {
+            position: relative;
+        }
+
+        .language-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #4facfe;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .language-dropdown.show {
+            display: block;
+        }
+
+        .language-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s ease;
+        }
+
+        .language-option:hover {
+            background: #f0f8ff;
+        }
+
+        .language-option:last-child {
+            border-bottom: none;
+        }
+
+        .language-option.highlighted {
+            background: #4facfe;
+            color: white;
+        }
+
+        .clear-filters {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.3s ease;
+        }
+
+        .clear-filters:hover {
+            background: #d32f2f;
+        }
+
+        .view-switch {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .view-switch-buttons {
+            display: inline-flex;
+            background: #f0f0f0;
+            border-radius: 25px;
+            padding: 4px;
+            gap: 4px;
+        }
+
+        .view-switch-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            background: transparent;
+            color: #666;
+        }
+
+        .view-switch-btn.active {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3);
+        }
+
+        .view-switch-btn:hover:not(.active) {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .language-view {
+            display: none;
+        }
+
+        .language-view.active {
+            display: block;
+        }
+
+        .language-item {
+            background: white;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .language-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .language-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .language-header:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        }
+
+        .language-title-section {
+            text-align: left;
+        }
+
+        .language-code-title {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .language-code-subtitle {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .language-progress-section {
+            text-align: right;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .language-progress-text {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .language-details {
+            display: none;
+            background: #fafafa;
+        }
+
+        .language-details.show {
+            display: block;
+        }
+
+        .language-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            background: #f8f9fa;
+            padding: 20px;
+        }
+
+        .language-stat {
+            text-align: center;
+        }
+
+        .language-stat-number {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .language-stat-label {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .language-files {
+            padding: 20px;
+        }
+
+        .language-file-item {
+            background: #fafafa;
+            margin-bottom: 12px;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4facfe;
+            transition: all 0.3s ease;
+        }
+
+        .language-file-item:hover {
+            background: #f0f8ff;
+            transform: translateX(5px);
+        }
+
+        .language-file-path {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .language-file-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .language-file-progress {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mini-progress-bar {
+            width: 80px;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .mini-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 8px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .overall-stats {
+                padding: 20px;
+                padding-top: 60px; /* 为按钮留出空间 */
+            }
+
+            .load-new-file-btn {
+                position: static;
+                display: block;
+                margin: 0 auto 20px auto;
+                background: rgba(255, 255, 255, 0.9);
+                color: #333;
+                border-color: rgba(255, 255, 255, 0.8);
+            }
+
+            .file-info {
+                position: static;
+                display: block;
+                margin: 0 auto 15px auto;
+                text-align: center;
+                max-width: 300px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 15px;
+            }
+
+            .file-header {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .view-switch-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .view-switch-btn {
+                width: 100%;
+                margin: 2px 0;
+            }
+
+            .language-summary {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+
+            .language-header {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+
+            .language-title-section,
+            .language-progress-section {
+                text-align: center;
+            }
+
+            .language-code-title {
+                font-size: 1.5em;
+            }
+
+            .language-file-stats {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .mini-progress-bar {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌐 Deepin Translation Statistics</h1>
+            <p>加载并查看翻译项目的完成情况统计</p>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <h3>点击选择或拖拽 JSON 文件到此处</h3>
+            <p>支持 deepin-translation-utils 生成的统计文件</p>
+            <button class="btn" onclick="document.getElementById('fileInput').click()">选择文件</button>
+            <input type="file" id="fileInput" class="file-input" accept=".json" />
+        </div>
+
+        <div class="stats-container" id="statsContainer">
+            <div class="overall-stats">
+                <div class="file-info" id="fileInfo">
+                    <!-- 文件信息将在这里显示 -->
+                </div>
+                <button class="load-new-file-btn" onclick="loadNewFile()">
+                    📁 加载新文件
+                </button>
+                <h2>📊 总体统计</h2>
+                <div class="stats-grid" id="overallStats">
+                    <!-- 总体统计将在这里动态生成 -->
+                </div>
+            </div>
+
+            <div class="view-switch">
+                <div class="view-switch-buttons">
+                    <button class="view-switch-btn active" onclick="switchView('file')" id="fileViewBtn">
+                        📁 按文件分组
+                    </button>
+                    <button class="view-switch-btn" onclick="switchView('language')" id="languageViewBtn">
+                        🌐 按语言分组
+                    </button>
+                </div>
+            </div>
+
+            <div class="filter-container">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>文件路径过滤</label>
+                        <input type="text" class="filter-input" id="pathFilter" placeholder="输入文件路径关键词...">
+                    </div>
+                    <div class="filter-group">
+                        <label>语言代码搜索</label>
+                        <div class="language-search-container">
+                            <input type="text" class="filter-input" id="langFilter" placeholder="输入语言代码或语言名称...">
+                            <div class="language-dropdown" id="languageDropdown">
+                                <!-- 语言选项将在这里动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>排序方式</label>
+                        <select class="filter-input" id="sortOrder">
+                            <option value="alphabetical">按名称排序</option>
+                            <option value="progress">按完成度排序</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>计算模式</label>
+                        <select class="filter-input" id="calculationMode" onchange="switchCalculationMode()">
+                            <option value="target">基于目标语言条目</option>
+                            <option value="source">基于原语言条目</option>
+                        </select>
+                    </div>
+                    <button class="clear-filters" onclick="clearFilters()">清除过滤</button>
+                </div>
+            </div>
+
+            <div class="file-list" id="fileView">
+                <h3>📋 详细文件列表</h3>
+                <div id="fileList">
+                    <!-- 文件列表将在这里动态生成 -->
+                </div>
+            </div>
+
+            <div class="language-view" id="languageView">
+                <h3>🌐 按语言分组视图</h3>
+                <div id="languageList">
+                    <!-- 语言列表将在这里动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let translationData = null;
+        let allLanguages = new Set();
+        let currentView = 'file'; // 'file' or 'language'
+        let currentFileName = '';
+        let currentFileSize = 0;
+        let languageOptions = []; // 存储语言选项数据
+        let selectedLanguageFilter = '';
+        let uploadEventHandlers = null; // 存储上传区域的事件处理器
+        let calculationMode = 'target'; // 'target' 或 'source' - 计算模式
+
+        // 文件上传处理
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const statsContainer = document.getElementById('statsContainer');
+
+        // 定义事件处理器
+        const dragOverHandler = (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        };
+
+        const dragLeaveHandler = () => {
+            uploadArea.classList.remove('drag-over');
+        };
+
+        const dropHandler = (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        };
+
+        // 存储事件处理器引用
+        uploadEventHandlers = {
+            dragover: dragOverHandler,
+            dragleave: dragLeaveHandler,
+            drop: dropHandler
+        };
+
+        // 初始绑定拖拽处理
+        uploadArea.addEventListener('dragover', dragOverHandler);
+        uploadArea.addEventListener('dragleave', dragLeaveHandler);
+        uploadArea.addEventListener('drop', dropHandler);
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // 处理文件
+        function handleFile(file) {
+            if (!file.name.endsWith('.json')) {
+                showError('请选择一个有效的 JSON 文件');
+                return;
+            }
+
+            // 记录文件信息
+            currentFileName = file.name;
+            currentFileSize = file.size;
+
+            showLoading();
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    translationData = JSON.parse(e.target.result);
+                    processData();
+                    showStats();
+                } catch (error) {
+                    showError('JSON 文件解析失败: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 显示加载状态
+        function showLoading() {
+            uploadArea.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>正在处理文件...</p>
+                </div>
+            `;
+        }
+
+        // 显示错误
+        function showError(message) {
+            uploadArea.innerHTML = `
+                <div class="error-message">
+                    <h3>❌ 错误</h3>
+                    <p>${message}</p>
+                    <button class="btn" onclick="location.reload()">重新开始</button>
+                </div>
+            `;
+        }
+
+        // 处理数据
+        function processData() {
+            allLanguages.clear();
+            languageOptions = [];
+            
+            // 收集所有语言
+            translationData.resource_groups.forEach(group => {
+                group.target_lang_codes.forEach(lang => allLanguages.add(lang));
+            });
+
+            // 准备语言选项数据（包含显示名称）
+            Array.from(allLanguages).forEach(langCode => {
+                const displayName = getLanguageDisplayName(langCode);
+                languageOptions.push({
+                    code: langCode,
+                    displayName: displayName,
+                    searchText: `${displayName} ${langCode}`.toLowerCase()
+                });
+            });
+
+            // 语言搜索功能将在showStats中设置
+        }
+
+        // 设置语言搜索功能
+        function setupLanguageSearch() {
+            const langFilter = document.getElementById('langFilter');
+            const languageDropdown = document.getElementById('languageDropdown');
+            
+            if (!langFilter || !languageDropdown) {
+                return; // 如果元素不存在，直接返回
+            }
+            
+            // 移除旧的事件监听器（如果存在）
+            langFilter.replaceWith(langFilter.cloneNode(true));
+            const newLangFilter = document.getElementById('langFilter');
+            
+            let highlightedIndex = -1;
+
+            // 搜索输入事件
+            newLangFilter.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                highlightedIndex = -1;
+                
+                if (searchTerm === '') {
+                    selectedLanguageFilter = '';
+                    languageDropdown.classList.remove('show');
+                    // 清空搜索时重新渲染统计信息
+                    renderOverallStats();
+                    renderFileList();
+                    renderLanguageList();
+                } else {
+                    const filtered = languageOptions.filter(option => 
+                        option.searchText.includes(searchTerm)
+                    );
+                    renderLanguageDropdown(filtered);
+                    languageDropdown.classList.add('show');
+                }
+                
+                applyFilters();
+            });
+
+            // 键盘导航
+            newLangFilter.addEventListener('keydown', (e) => {
+                const options = languageDropdown.querySelectorAll('.language-option');
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    highlightedIndex = Math.min(highlightedIndex + 1, options.length - 1);
+                    updateHighlight(options);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    highlightedIndex = Math.max(highlightedIndex - 1, -1);
+                    updateHighlight(options);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (highlightedIndex >= 0 && options[highlightedIndex]) {
+                        selectLanguageOption(options[highlightedIndex].dataset.langCode);
+                    }
+                } else if (e.key === 'Escape') {
+                    languageDropdown.classList.remove('show');
+                    highlightedIndex = -1;
+                }
+            });
+
+            // 点击外部关闭下拉框
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.language-search-container')) {
+                    languageDropdown.classList.remove('show');
+                    highlightedIndex = -1;
+                }
+            });
+        }
+
+        // 渲染语言下拉选项
+        function renderLanguageDropdown(options) {
+            const languageDropdown = document.getElementById('languageDropdown');
+            languageDropdown.innerHTML = '';
+
+            options.forEach(option => {
+                const div = document.createElement('div');
+                div.className = 'language-option';
+                div.dataset.langCode = option.code;
+                div.textContent = option.displayName;
+                div.addEventListener('click', () => selectLanguageOption(option.code));
+                languageDropdown.appendChild(div);
+            });
+        }
+
+        // 更新高亮显示
+        function updateHighlight(options) {
+            options.forEach((option, index) => {
+                option.classList.toggle('highlighted', index === highlightedIndex);
+            });
+        }
+
+        // 选择语言选项
+        function selectLanguageOption(langCode) {
+            const langFilter = document.getElementById('langFilter');
+            const languageDropdown = document.getElementById('languageDropdown');
+            
+            selectedLanguageFilter = langCode;
+            const selectedOption = languageOptions.find(opt => opt.code === langCode);
+            if (selectedOption && langFilter) {
+                langFilter.value = selectedOption.displayName;
+            }
+            
+            if (languageDropdown) {
+                languageDropdown.classList.remove('show');
+            }
+            
+            // 重新渲染统计信息和列表以反映语言特定的数据
+            renderOverallStats();
+            renderFileList();
+            renderLanguageList();
+            applyFilters();
+        }
+
+        // 显示统计信息
+        function showStats() {
+            uploadArea.style.display = 'none';
+            statsContainer.style.display = 'block';
+            
+            updateFileInfo();
+            renderOverallStats();
+            renderFileList();
+            renderLanguageList();
+            setupFilters();
+            setupLanguageSearch();
+        }
+
+        // 更新文件信息显示
+        function updateFileInfo() {
+            const fileInfoEl = document.getElementById('fileInfo');
+            const fileSize = (currentFileSize / 1024).toFixed(1);
+            const createTime = new Date().toLocaleString('zh-CN');
+            
+            fileInfoEl.innerHTML = `
+                📄 ${currentFileName} (${fileSize} KB)<br>
+                🕐 加载时间: ${createTime}
+            `;
+        }
+
+        // 渲染总体统计
+        function renderOverallStats() {
+            const stats = calculateOverallStats();
+            const overallStatsEl = document.getElementById('overallStats');
+            
+            overallStatsEl.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number total">${stats.totalFiles}</div>
+                    <div class="stat-label">总文件数${stats.statsContext}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number finished">${stats.totalFinished}</div>
+                    <div class="stat-label">已完成条目${stats.statsContext}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number unfinished">${stats.totalUnfinished}</div>
+                    <div class="stat-label">未完成条目${stats.statsContext}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number progress">${stats.overallProgress}%</div>
+                    <div class="stat-label">总体进度${stats.statsContext}</div>
+                </div>
+            `;
+        }
+
+        // 计算总体统计（支持语言特定统计和计算模式）
+        function calculateOverallStats() {
+            let totalFiles = 0;
+            let totalFinished = 0;
+            let totalTargetItems = 0; // 目标语言条目总数
+            let totalSourceItems = 0; // 原语言条目总数
+            let statsContext = '';
+
+            translationData.resource_groups.forEach(group => {
+                // 统计所有资源组的原语言条目
+                const sourceTotal = group.source_stats.finished + group.source_stats.unfinished;
+                
+                // 如果有选定的语言过滤器
+                if (selectedLanguageFilter) {
+                    // 只有当该资源组存在选定语言时才统计
+                    if (group.target_stats && group.target_stats[selectedLanguageFilter]) {
+                        totalFiles++;
+                        const langStats = group.target_stats[selectedLanguageFilter].stats;
+                        totalFinished += langStats.finished;
+                        totalTargetItems += langStats.finished + langStats.unfinished;
+                        totalSourceItems += sourceTotal;
+                    }
+                } else {
+                    // 统计所有资源组（包括没有目标语言的）
+                    totalFiles++;
+                    
+                    // 如果有目标语言统计，累加所有语言的完成数
+                    if (group.target_lang_codes && group.target_lang_codes.length > 0) {
+                        Object.values(group.target_stats).forEach(langStats => {
+                            totalFinished += langStats.stats.finished;
+                            totalTargetItems += langStats.stats.finished + langStats.stats.unfinished;
+                        });
+                        // 原语言条目数按语言数量计算
+                        totalSourceItems += sourceTotal * Object.keys(group.target_stats).length;
+                    } else {
+                        // 没有目标语言的资源组，贡献0完成数，但计入原语言条目数
+                        totalSourceItems += sourceTotal;
+                    }
+                }
+            });
+
+            // 设置显示上下文
+            if (selectedLanguageFilter) {
+                const selectedLangName = getLanguageDisplayName(selectedLanguageFilter);
+                statsContext = ` (${selectedLangName})`;
+            } else {
+                statsContext = ' (所有语言)';
+            }
+
+            // 根据计算模式选择基准
+            const denominator = calculationMode === 'target' ? totalTargetItems : totalSourceItems;
+            const overallProgress = denominator > 0 ? ((totalFinished / denominator) * 100).toFixed(2) : '0.00';
+
+            return {
+                totalFiles,
+                totalFinished,
+                totalUnfinished: denominator - totalFinished,
+                overallProgress,
+                statsContext: statsContext + ` [${calculationMode === 'target' ? '目标基准' : '原文基准'}]`
+            };
+        }
+
+        // 渲染文件列表
+        function renderFileList() {
+            const fileListEl = document.getElementById('fileList');
+            fileListEl.innerHTML = '';
+
+            // 获取排序方式
+            const sortOrderEl = document.getElementById('sortOrder');
+            const sortOrder = sortOrderEl ? sortOrderEl.value : 'alphabetical';
+            
+            // 准备数据并排序
+            let fileData = translationData.resource_groups
+                .filter(group => group.target_lang_codes.length > 0)
+                .map(group => {
+                    let totalFinished = 0;
+                    let totalUnfinished = 0;
+                    let progress = 0;
+                    
+                    // 如果有选定的语言过滤器，只计算该语言的进度
+                    if (selectedLanguageFilter && group.target_stats[selectedLanguageFilter]) {
+                        const langStats = group.target_stats[selectedLanguageFilter].stats;
+                        totalFinished = langStats.finished;
+                        totalUnfinished = langStats.unfinished;
+                    } else {
+                        // 否则计算所有语言的总体进度
+                        Object.values(group.target_stats).forEach(langStats => {
+                            totalFinished += langStats.stats.finished;
+                            totalUnfinished += langStats.stats.unfinished;
+                        });
+                    }
+
+                    // 根据计算模式选择基准
+                    const sourceTotal = group.source_stats.finished + group.source_stats.unfinished;
+                    const targetTotal = totalFinished + totalUnfinished;
+                    const denominator = calculationMode === 'target' ? targetTotal : sourceTotal;
+                    progress = denominator > 0 ? ((totalFinished / denominator) * 100).toFixed(2) : '0.00';
+                    
+                    return { group, progress, totalFinished, totalUnfinished };
+                });
+
+            // 排序
+            if (sortOrder === 'progress') {
+                fileData.sort((a, b) => parseFloat(b.progress) - parseFloat(a.progress)); // 按进度降序
+            } else {
+                fileData.sort((a, b) => a.group.source_path.localeCompare(b.group.source_path)); // 按名称升序
+            }
+
+            // 渲染
+            fileData.forEach((item, index) => {
+                const fileItem = createFileItem(item.group, index);
+                fileListEl.appendChild(fileItem);
+            });
+        }
+
+        // 创建文件项
+        function createFileItem(group, index) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.dataset.sourcePath = group.source_path;
+
+            // 计算文件进度（支持语言特定显示）
+            let totalFinished = 0;
+            let totalUnfinished = 0;
+            let displayContext = '';
+            
+            // 如果有选定的语言过滤器，只计算该语言的进度
+            if (selectedLanguageFilter && group.target_stats[selectedLanguageFilter]) {
+                const langStats = group.target_stats[selectedLanguageFilter].stats;
+                totalFinished = langStats.finished;
+                totalUnfinished = langStats.unfinished;
+                const selectedLangName = getLanguageDisplayName(selectedLanguageFilter);
+                displayContext = ` (${selectedLangName})`;
+            } else {
+                // 否则计算所有语言的总体进度
+                Object.values(group.target_stats).forEach(langStats => {
+                    totalFinished += langStats.stats.finished;
+                    totalUnfinished += langStats.stats.unfinished;
+                });
+                displayContext = ' (所有语言)';
+            }
+
+            // 根据计算模式选择基准
+            const sourceTotal = group.source_stats.finished + group.source_stats.unfinished;
+            const targetTotal = totalFinished + totalUnfinished;
+            const denominator = calculationMode === 'target' ? targetTotal : sourceTotal;
+            const progress = denominator > 0 ? ((totalFinished / denominator) * 100).toFixed(2) : '0.00';
+
+            fileItem.innerHTML = `
+                <div class="file-header" onclick="toggleFileDetails(${index})">
+                    <div class="file-path">${group.source_path}</div>
+                    <div class="file-progress">
+                        ${progress}%${displayContext}
+                        <span class="expand-icon" id="icon-${index}">▼</span>
+                    </div>
+                </div>
+                <div class="file-details" id="details-${index}">
+                    <div class="lang-stats" id="langStats-${index}">
+                        ${renderLanguageStats(group)}
+                    </div>
+                </div>
+            `;
+
+            return fileItem;
+        }
+
+        // 渲染语言统计
+        function renderLanguageStats(group) {
+            let html = '';
+
+            Object.entries(group.target_stats).forEach(([langCode, langData]) => {
+                const stats = langData.stats;
+                const total = stats.finished + stats.unfinished;
+                const progress = total > 0 ? Math.round((stats.finished / total) * 100) : 0;
+
+                html += `
+                    <div class="lang-card">
+                        <div class="lang-code">${langCode}</div>
+                        <div class="lang-progress-bar">
+                            <div class="lang-progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                        <div class="lang-stats-text">
+                            <span>已完成: ${stats.finished}</span>
+                            <span>未完成: ${stats.unfinished}</span>
+                            <span>进度: ${progress}%</span>
+                        </div>
+                        <div style="font-size: 0.8em; color: #888; margin-top: 5px;">
+                            路径: ${langData.resource_path}
+                        </div>
+                    </div>
+                `;
+            });
+
+            return html;
+        }
+
+        // 切换文件详情显示
+        function toggleFileDetails(index) {
+            const details = document.getElementById(`details-${index}`);
+            const icon = document.getElementById(`icon-${index}`);
+            
+            if (details.classList.contains('show')) {
+                details.classList.remove('show');
+                icon.classList.remove('rotated');
+            } else {
+                details.classList.add('show');
+                icon.classList.add('rotated');
+            }
+        }
+
+        // 设置过滤器
+        function setupFilters() {
+            const pathFilter = document.getElementById('pathFilter');
+            const sortOrder = document.getElementById('sortOrder');
+
+            if (pathFilter) {
+                pathFilter.addEventListener('input', applyFilters);
+            }
+            
+            if (sortOrder) {
+                sortOrder.addEventListener('change', () => {
+                    renderFileList();
+                    renderLanguageList();
+                    applyFilters();
+                });
+            }
+        }
+
+
+
+        // 清除过滤器
+        function clearFilters() {
+            const pathFilter = document.getElementById('pathFilter');
+            const langFilter = document.getElementById('langFilter');
+            const sortOrder = document.getElementById('sortOrder');
+            const calculationModeEl = document.getElementById('calculationMode');
+            
+            if (pathFilter) pathFilter.value = '';
+            if (langFilter) langFilter.value = '';
+            if (sortOrder) sortOrder.value = 'alphabetical';
+            if (calculationModeEl) calculationModeEl.value = 'target';
+            selectedLanguageFilter = '';
+            calculationMode = 'target';
+            
+            // 隐藏语言下拉框
+            const languageDropdown = document.getElementById('languageDropdown');
+            if (languageDropdown) {
+                languageDropdown.classList.remove('show');
+            }
+            
+            // 重新渲染列表（应用默认排序） - 仅在有数据时
+            if (translationData) {
+                renderOverallStats();
+                renderFileList();
+                renderLanguageList();
+                applyFilters();
+            }
+        }
+
+        // 视图切换功能
+        function switchView(viewType) {
+            currentView = viewType;
+            
+            // 更新按钮状态
+            document.getElementById('fileViewBtn').classList.toggle('active', viewType === 'file');
+            document.getElementById('languageViewBtn').classList.toggle('active', viewType === 'language');
+            
+            // 切换视图显示
+            const fileView = document.getElementById('fileView');
+            const languageView = document.getElementById('languageView');
+            
+            if (viewType === 'file') {
+                fileView.style.display = 'block';
+                languageView.classList.remove('active');
+            } else {
+                fileView.style.display = 'none';
+                languageView.classList.add('active');
+            }
+            
+            // 应用当前过滤器
+            applyFilters();
+        }
+
+        // 切换计算模式
+        function switchCalculationMode() {
+            const calculationModeEl = document.getElementById('calculationMode');
+            calculationMode = calculationModeEl.value;
+            
+            // 重新渲染统计信息和列表
+            renderOverallStats();
+            renderFileList();
+            renderLanguageList();
+            applyFilters();
+        }
+
+        // 渲染语言列表
+        function renderLanguageList() {
+            const languageListEl = document.getElementById('languageList');
+            languageListEl.innerHTML = '';
+
+            // 按语言分组数据
+            const languageData = groupByLanguage();
+            
+            // 获取排序方式
+            const sortOrderEl = document.getElementById('sortOrder');
+            const sortOrder = sortOrderEl ? sortOrderEl.value : 'alphabetical';
+
+            // 准备语言数据并排序
+            let langArray = Array.from(allLanguages).map(langCode => {
+                const data = languageData[langCode];
+                if (!data) return null;
+                
+                // 根据计算模式选择基准计算翻译完成度
+                const denominator = calculationMode === 'target' ? data.totalTargetItems : data.totalSourceItems;
+                const progress = denominator > 0 ? 
+                    ((data.totalFinished / denominator) * 100).toFixed(2) : '0.00';
+                
+                return { langCode, data, progress };
+            }).filter(Boolean);
+
+            // 排序
+            if (sortOrder === 'progress') {
+                langArray.sort((a, b) => parseFloat(b.progress) - parseFloat(a.progress)); // 按进度降序
+            } else {
+                langArray.sort((a, b) => {
+                    const displayNameA = getLanguageDisplayName(a.langCode);
+                    const displayNameB = getLanguageDisplayName(b.langCode);
+                    return displayNameA.localeCompare(displayNameB);
+                }); // 按显示名称升序
+            }
+
+            // 渲染
+            langArray.forEach((item, index) => {
+                const languageItem = createLanguageItem(item.langCode, item.data, index);
+                languageListEl.appendChild(languageItem);
+            });
+        }
+
+        // 按语言分组数据
+        function groupByLanguage() {
+            const languageData = {};
+
+            translationData.resource_groups.forEach(group => {
+                Object.entries(group.target_stats).forEach(([langCode, langStats]) => {
+                    if (!languageData[langCode]) {
+                        languageData[langCode] = {
+                            files: [],
+                            totalFinished: 0,
+                            totalUnfinished: 0,
+                            totalFiles: 0
+                        };
+                    }
+
+                    const stats = langStats.stats;
+                    // 根据计算模式选择基准
+                    const sourceTotal = group.source_stats.finished + group.source_stats.unfinished;
+                    const targetTotal = stats.finished + stats.unfinished;
+                    const denominator = calculationMode === 'target' ? targetTotal : sourceTotal;
+                    const progress = denominator > 0 ? ((stats.finished / denominator) * 100).toFixed(2) : '0.00';
+                    
+                    languageData[langCode].files.push({
+                        sourcePath: group.source_path,
+                        targetPath: langStats.resource_path,
+                        finished: stats.finished,
+                        unfinished: stats.unfinished,
+                        sourceTotal: sourceTotal,
+                        targetTotal: targetTotal,
+                        progress: progress
+                    });
+
+                    languageData[langCode].totalFinished += stats.finished;
+                    languageData[langCode].totalTargetItems = (languageData[langCode].totalTargetItems || 0) + targetTotal;
+                    languageData[langCode].totalSourceItems = (languageData[langCode].totalSourceItems || 0) + sourceTotal;
+                    
+                    // 根据计算模式选择基准来计算未完成数
+                    if (calculationMode === 'target') {
+                        languageData[langCode].totalUnfinished = languageData[langCode].totalTargetItems - languageData[langCode].totalFinished;
+                    } else {
+                        languageData[langCode].totalUnfinished = languageData[langCode].totalSourceItems - languageData[langCode].totalFinished;
+                    }
+                    
+                    languageData[langCode].totalFiles++;
+                });
+            });
+
+            return languageData;
+        }
+
+        // 获取语言显示名称
+        function getLanguageDisplayName(langCode) {
+            try {
+                // 将下划线转换为连字符
+                const bcp47Code = langCode.replace('_', '-');
+                // 使用Intl.DisplayNames获取语言名称
+                const displayNames = new Intl.DisplayNames(['zh-CN'], {type: 'language'});
+                const languageName = displayNames.of(bcp47Code);
+                return `${languageName} (${langCode})`;
+            } catch (error) {
+                // 如果获取失败，返回原始代码
+                return langCode;
+            }
+        }
+
+        // 创建语言项
+        function createLanguageItem(langCode, langData, index) {
+            const languageItem = document.createElement('div');
+            languageItem.className = 'language-item';
+            languageItem.dataset.languageCode = langCode;
+
+            const total = langData.totalFinished + langData.totalUnfinished;
+            const overallProgress = total > 0 ? Math.round((langData.totalFinished / total) * 100) : 0;
+            const displayName = getLanguageDisplayName(langCode);
+            
+            languageItem.innerHTML = `
+                <div class="language-header" onclick="toggleLanguageDetails(${index})">
+                    <div class="language-title-section">
+                        <div class="language-code-title">${displayName}</div>
+                        <div class="language-code-subtitle">共 ${langData.totalFiles} 个翻译文件</div>
+                    </div>
+                    <div class="language-progress-section">
+                        <div class="language-progress-text">${overallProgress}%</div>
+                        <span class="expand-icon" id="lang-icon-${index}">▼</span>
+                    </div>
+                </div>
+                <div class="language-details" id="lang-details-${index}">
+                    <div class="language-summary">
+                        <div class="language-stat">
+                            <div class="language-stat-number total">${langData.totalFiles}</div>
+                            <div class="language-stat-label">翻译文件</div>
+                        </div>
+                        <div class="language-stat">
+                            <div class="language-stat-number finished">${langData.totalFinished}</div>
+                            <div class="language-stat-label">已完成条目</div>
+                        </div>
+                        <div class="language-stat">
+                            <div class="language-stat-number unfinished">${langData.totalUnfinished}</div>
+                            <div class="language-stat-label">未完成条目</div>
+                        </div>
+                        <div class="language-stat">
+                            <div class="language-stat-number progress">${overallProgress}%</div>
+                            <div class="language-stat-label">总体进度</div>
+                        </div>
+                    </div>
+                    <div class="language-files">
+                        ${renderLanguageFiles(langData.files)}
+                    </div>
+                </div>
+            `;
+
+            return languageItem;
+        }
+
+        // 渲染语言文件列表
+        function renderLanguageFiles(files) {
+            return files.map(file => `
+                <div class="language-file-item" data-source-path="${file.sourcePath}">
+                    <div class="language-file-path">${file.sourcePath}</div>
+                    <div class="language-file-stats">
+                        <div class="language-file-progress">
+                            <span>已完成: ${file.finished} | 未完成: ${file.unfinished}</span>
+                            <div class="mini-progress-bar">
+                                <div class="mini-progress-fill" style="width: ${file.progress}%"></div>
+                            </div>
+                            <span>${file.progress}%</span>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.8em; color: #888; margin-top: 5px;">
+                        目标文件: ${file.targetPath}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 应用过滤器
+        function applyFilters() {
+            if (currentView === 'file') {
+                applyFileFilters();
+            } else {
+                applyLanguageFilters();
+            }
+        }
+
+        // 文件视图过滤器
+        function applyFileFilters() {
+            const pathValue = document.getElementById('pathFilter').value.toLowerCase();
+            const fileItems = document.querySelectorAll('.file-item');
+
+            fileItems.forEach(item => {
+                const sourcePath = item.dataset.sourcePath.toLowerCase();
+                let shouldShow = true;
+
+                // 路径过滤
+                if (pathValue && !sourcePath.includes(pathValue)) {
+                    shouldShow = false;
+                }
+
+                // 语言过滤
+                if (selectedLanguageFilter && shouldShow) {
+                    const group = translationData.resource_groups.find(g => 
+                        g.source_path === item.dataset.sourcePath
+                    );
+                    if (!group || !group.target_lang_codes.includes(selectedLanguageFilter)) {
+                        shouldShow = false;
+                    }
+                }
+
+                item.style.display = shouldShow ? 'block' : 'none';
+            });
+        }
+
+        // 语言视图过滤器
+        function applyLanguageFilters() {
+            const pathValue = document.getElementById('pathFilter').value.toLowerCase();
+            const languageItems = document.querySelectorAll('.language-item');
+
+            languageItems.forEach(item => {
+                const langCode = item.dataset.languageCode;
+                let shouldShow = true;
+
+                // 语言过滤
+                if (selectedLanguageFilter && langCode !== selectedLanguageFilter) {
+                    shouldShow = false;
+                }
+
+                if (shouldShow) {
+                    // 在语言项内部应用文件路径过滤
+                    const fileItems = item.querySelectorAll('.language-file-item');
+                    let hasVisibleFiles = false;
+
+                    fileItems.forEach(fileItem => {
+                        const sourcePath = fileItem.dataset.sourcePath.toLowerCase();
+                        const fileShould = !pathValue || sourcePath.includes(pathValue);
+                        fileItem.style.display = fileShould ? 'block' : 'none';
+                        if (fileShould) hasVisibleFiles = true;
+                    });
+
+                    // 如果没有可见的文件，隐藏整个语言项
+                    shouldShow = hasVisibleFiles;
+                }
+
+                item.style.display = shouldShow ? 'block' : 'none';
+            });
+        }
+
+        // 切换语言详情显示
+        function toggleLanguageDetails(index) {
+            const details = document.getElementById(`lang-details-${index}`);
+            const icon = document.getElementById(`lang-icon-${index}`);
+            
+            if (details.classList.contains('show')) {
+                details.classList.remove('show');
+                icon.classList.remove('rotated');
+            } else {
+                details.classList.add('show');
+                icon.classList.add('rotated');
+            }
+        }
+
+        // 加载新文件
+        function loadNewFile() {
+            // 重置状态
+            translationData = null;
+            allLanguages.clear();
+            currentView = 'file';
+            currentFileName = '';
+            currentFileSize = 0;
+            languageOptions = [];
+            selectedLanguageFilter = '';
+            calculationMode = 'target';
+            
+            // 先显示上传界面
+            statsContainer.style.display = 'none';
+            uploadArea.style.display = 'block';
+            
+            // 重置视图按钮状态 (添加错误检查)
+            const fileViewBtn = document.getElementById('fileViewBtn');
+            const languageViewBtn = document.getElementById('languageViewBtn');
+            if (fileViewBtn) fileViewBtn.classList.add('active');
+            if (languageViewBtn) languageViewBtn.classList.remove('active');
+            
+            // 重置过滤器 (在界面切换后)
+            clearFilters();
+            
+            // 直接重置内容，不需要克隆
+            uploadArea.innerHTML = `
+                <div class="upload-icon">📁</div>
+                <h3>点击选择或拖拽 JSON 文件到此处</h3>
+                <p>支持 deepin-translation-utils 生成的统计文件</p>
+                <button class="btn" onclick="document.getElementById('fileInput').click()">选择文件</button>
+                <input type="file" id="fileInput" class="file-input" accept=".json" />
+            `;
+            
+            // 重新绑定文件输入事件
+            const newFileInput = document.getElementById('fileInput');
+            if (newFileInput) {
+                newFileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        handleFile(e.target.files[0]);
+                    }
+                });
+            }
+            
+            // 移除旧的拖拽事件监听器
+            if (uploadEventHandlers) {
+                uploadArea.removeEventListener('dragover', uploadEventHandlers.dragover);
+                uploadArea.removeEventListener('dragleave', uploadEventHandlers.dragleave);
+                uploadArea.removeEventListener('drop', uploadEventHandlers.drop);
+            }
+            
+            // 重新绑定拖拽事件
+            uploadArea.addEventListener('dragover', uploadEventHandlers.dragover);
+            uploadArea.addEventListener('dragleave', uploadEventHandlers.dragleave);
+            uploadArea.addEventListener('drop', uploadEventHandlers.drop);
+        }
+    </script>
+</body>
+</html>
