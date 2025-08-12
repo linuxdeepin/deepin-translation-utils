@@ -449,6 +449,41 @@
             color: #333;
         }
 
+        /* 语言切换样式 */
+        .language-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 25px;
+            padding: 5px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .language-toggle-btn {
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.8);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            margin: 0 2px;
+        }
+
+        .language-toggle-btn.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-weight: 500;
+        }
+
+        .language-toggle-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
         .language-view {
             display: none;
         }
@@ -690,21 +725,33 @@
             .mini-progress-bar {
                 width: 100%;
             }
+
+            .language-toggle {
+                position: static;
+                margin: 0 auto 15px auto;
+                display: flex;
+                justify-content: center;
+                max-width: 200px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌐 Deepin Translation Statistics</h1>
-            <p>加载并查看翻译项目的完成情况统计</p>
+            <div class="language-toggle">
+                <button class="language-toggle-btn active" onclick="switchLanguage('zh-CN')" id="lang-zh">中文</button>
+                <button class="language-toggle-btn" onclick="switchLanguage('en')" id="lang-en">EN</button>
+            </div>
+            <h1 data-i18n="header.title">🌐 Deepin Translation Statistics</h1>
+            <p data-i18n="header.subtitle">加载并查看翻译项目的完成情况统计</p>
         </div>
 
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📁</div>
-            <h3>点击选择或拖拽 JSON 文件到此处</h3>
-            <p>支持 deepin-translation-utils 生成的统计文件</p>
-            <button class="btn" onclick="document.getElementById('fileInput').click()">选择文件</button>
+            <h3 data-i18n="upload.title">点击选择或拖拽 JSON 文件到此处</h3>
+            <p data-i18n="upload.description">支持 deepin-translation-utils 生成的统计文件</p>
+            <button class="btn" onclick="document.getElementById('fileInput').click()" data-i18n="upload.button">选择文件</button>
             <input type="file" id="fileInput" class="file-input" accept=".json" />
         </div>
 
@@ -713,10 +760,10 @@
                 <div class="file-info" id="fileInfo">
                     <!-- 文件信息将在这里显示 -->
                 </div>
-                <button class="load-new-file-btn" onclick="loadNewFile()">
+                <button class="load-new-file-btn" onclick="loadNewFile()" data-i18n="stats.load_new">
                     📁 加载新文件
                 </button>
-                <h2>📊 总体统计</h2>
+                <h2 data-i18n="stats.overall">📊 总体统计</h2>
                 <div class="stats-grid" id="overallStats">
                     <!-- 总体统计将在这里动态生成 -->
                 </div>
@@ -724,10 +771,10 @@
 
             <div class="view-switch">
                 <div class="view-switch-buttons">
-                    <button class="view-switch-btn active" onclick="switchView('file')" id="fileViewBtn">
+                    <button class="view-switch-btn active" onclick="switchView('file')" id="fileViewBtn" data-i18n="view.file_group">
                         📁 按文件分组
                     </button>
-                    <button class="view-switch-btn" onclick="switchView('language')" id="languageViewBtn">
+                    <button class="view-switch-btn" onclick="switchView('language')" id="languageViewBtn" data-i18n="view.language_group">
                         🌐 按语言分组
                     </button>
                 </div>
@@ -736,45 +783,45 @@
             <div class="filter-container">
                 <div class="filter-row">
                     <div class="filter-group">
-                        <label>文件路径过滤</label>
-                        <input type="text" class="filter-input" id="pathFilter" placeholder="输入文件路径关键词...">
+                        <label data-i18n="filter.path">文件路径过滤</label>
+                        <input type="text" class="filter-input" id="pathFilter" data-i18n-placeholder="filter.path_placeholder" placeholder="输入文件路径关键词...">
                     </div>
                     <div class="filter-group">
-                        <label>语言代码搜索</label>
+                        <label data-i18n="filter.language">语言代码搜索</label>
                         <div class="language-search-container">
-                            <input type="text" class="filter-input" id="langFilter" placeholder="输入语言代码或语言名称...">
+                            <input type="text" class="filter-input" id="langFilter" data-i18n-placeholder="filter.language_placeholder" placeholder="输入语言代码或语言名称...">
                             <div class="language-dropdown" id="languageDropdown">
                                 <!-- 语言选项将在这里动态生成 -->
                             </div>
                         </div>
                     </div>
                     <div class="filter-group">
-                        <label>排序方式</label>
+                        <label data-i18n="filter.sort">排序方式</label>
                         <select class="filter-input" id="sortOrder">
-                            <option value="alphabetical">按名称排序</option>
-                            <option value="progress">按完成度排序</option>
+                            <option value="alphabetical" data-i18n="filter.sort_name">按名称排序</option>
+                            <option value="progress" data-i18n="filter.sort_progress">按完成度排序</option>
                         </select>
                     </div>
                     <div class="filter-group">
-                        <label>计算模式</label>
+                        <label data-i18n="filter.calculation">计算模式</label>
                         <select class="filter-input" id="calculationMode" onchange="switchCalculationMode()">
-                            <option value="target">基于目标语言条目</option>
-                            <option value="source">基于原语言条目</option>
+                            <option value="target" data-i18n="filter.target_based">基于目标语言条目</option>
+                            <option value="source" data-i18n="filter.source_based">基于原语言条目</option>
                         </select>
                     </div>
-                    <button class="clear-filters" onclick="clearFilters()">清除过滤</button>
+                    <button class="clear-filters" onclick="clearFilters()" data-i18n="filter.clear">清除过滤</button>
                 </div>
             </div>
 
             <div class="file-list" id="fileView">
-                <h3>📋 详细文件列表</h3>
+                <h3 data-i18n="file.detailed_list">📋 详细文件列表</h3>
                 <div id="fileList">
                     <!-- 文件列表将在这里动态生成 -->
                 </div>
             </div>
 
             <div class="language-view" id="languageView">
-                <h3>🌐 按语言分组视图</h3>
+                <h3 data-i18n="language.grouped_view">🌐 按语言分组视图</h3>
                 <div id="languageList">
                     <!-- 语言列表将在这里动态生成 -->
                 </div>
@@ -783,6 +830,109 @@
     </div>
 
     <script>
+        // 语言切换和国际化相关变量
+        let currentLanguage = 'zh-CN'; // 默认中文
+        
+        // 翻译对象
+        const translations = {
+            'zh-CN': {
+                'header.title': '🌐 Deepin Translation Statistics',
+                'header.subtitle': '加载并查看翻译项目的完成情况统计',
+                'upload.title': '点击选择或拖拽 JSON 文件到此处',
+                'upload.description': '支持 deepin-translation-utils 生成的统计文件',
+                'upload.button': '选择文件',
+                'upload.loading': '正在处理文件...',
+                'upload.error': '错误',
+                'upload.restart': '重新开始',
+                'upload.invalid': '请选择一个有效的 JSON 文件',
+                'upload.parse_error': 'JSON 文件解析失败: ',
+                'stats.overall': '📊 总体统计',
+                'stats.load_new': '📁 加载新文件',
+                'stats.total_files': '总文件数',
+                'stats.finished_entries': '已完成条目',
+                'stats.unfinished_entries': '未完成条目',
+                'stats.overall_progress': '总体进度',
+                'stats.all_languages': '(所有语言)',
+                'stats.target_based': '[目标基准]',
+                'stats.source_based': '[原文基准]',
+                'view.file_group': '📁 按文件分组',
+                'view.language_group': '🌐 按语言分组',
+                'filter.path': '文件路径过滤',
+                'filter.path_placeholder': '输入文件路径关键词...',
+                'filter.language': '语言代码搜索',
+                'filter.language_placeholder': '输入语言代码或语言名称...',
+                'filter.sort': '排序方式',
+                'filter.sort_name': '按名称排序',
+                'filter.sort_progress': '按完成度排序',
+                'filter.calculation': '计算模式',
+                'filter.target_based': '基于目标语言条目',
+                'filter.source_based': '基于原语言条目',
+                'filter.clear': '清除过滤',
+                'file.detailed_list': '📋 详细文件列表',
+                'file.all_languages': ' (所有语言)',
+                'file.finished': '已完成',
+                'file.unfinished': '未完成',
+                'file.progress': '进度',
+                'file.path': '路径',
+                'language.grouped_view': '🌐 按语言分组视图',
+                'language.files_count': '个翻译文件',
+                'language.files': '翻译文件',
+                'language.finished_entries': '已完成条目',
+                'language.unfinished_entries': '未完成条目',
+                'language.overall_progress': '总体进度',
+                'language.target_file': '目标文件',
+                'time.loaded': '🕐 加载时间: '
+            },
+            'en': {
+                'header.title': '🌐 Deepin Translation Statistics',
+                'header.subtitle': 'Load and view translation project completion statistics',
+                'upload.title': 'Click to select or drag JSON file here',
+                'upload.description': 'Supports statistics files generated by deepin-translation-utils',
+                'upload.button': 'Select File',
+                'upload.loading': 'Processing file...',
+                'upload.error': 'Error',
+                'upload.restart': 'Start Over',
+                'upload.invalid': 'Please select a valid JSON file',
+                'upload.parse_error': 'JSON file parsing failed: ',
+                'stats.overall': '📊 Overall Statistics',
+                'stats.load_new': '📁 Load New File',
+                'stats.total_files': 'Total Files',
+                'stats.finished_entries': 'Finished Entries',
+                'stats.unfinished_entries': 'Unfinished Entries',
+                'stats.overall_progress': 'Overall Progress',
+                'stats.all_languages': '(All Languages)',
+                'stats.target_based': '[Target Based]',
+                'stats.source_based': '[Source Based]',
+                'view.file_group': '📁 Group by File',
+                'view.language_group': '🌐 Group by Language',
+                'filter.path': 'File Path Filter',
+                'filter.path_placeholder': 'Enter file path keywords...',
+                'filter.language': 'Language Code Search',
+                'filter.language_placeholder': 'Enter language code or name...',
+                'filter.sort': 'Sort Order',
+                'filter.sort_name': 'Sort by Name',
+                'filter.sort_progress': 'Sort by Progress',
+                'filter.calculation': 'Calculation Mode',
+                'filter.target_based': 'Based on Target Language Entries',
+                'filter.source_based': 'Based on Source Language Entries',
+                'filter.clear': 'Clear Filters',
+                'file.detailed_list': '📋 Detailed File List',
+                'file.all_languages': ' (All Languages)',
+                'file.finished': 'Finished',
+                'file.unfinished': 'Unfinished',
+                'file.progress': 'Progress',
+                'file.path': 'Path',
+                'language.grouped_view': '🌐 Language Grouped View',
+                'language.files_count': ' translation files',
+                'language.files': 'Translation Files',
+                'language.finished_entries': 'Finished Entries',
+                'language.unfinished_entries': 'Unfinished Entries',
+                'language.overall_progress': 'Overall Progress',
+                'language.target_file': 'Target File',
+                'time.loaded': '🕐 Load Time: '
+            }
+        };
+
         let translationData = null;
         let allLanguages = new Set();
         let currentView = 'file'; // 'file' or 'language'
@@ -792,6 +942,81 @@
         let selectedLanguageFilter = '';
         let uploadEventHandlers = null; // 存储上传区域的事件处理器
         let calculationMode = 'target'; // 'target' 或 'source' - 计算模式
+
+        // 国际化功能
+        function t(key) {
+            return translations[currentLanguage][key] || key;
+        }
+
+        function updatePageLanguage() {
+            // 更新所有带有 data-i18n 属性的元素
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                element.textContent = t(key);
+            });
+
+            // 更新 placeholder 属性
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+                const key = element.getAttribute('data-i18n-placeholder');
+                element.placeholder = t(key);
+            });
+
+            // 更新动态内容（如果已经加载了数据）
+            if (translationData) {
+                updateFileInfo();
+                renderOverallStats();
+                renderFileList();
+                renderLanguageList();
+            }
+        }
+
+        function switchLanguage(lang) {
+            if (lang === currentLanguage) return;
+            
+            currentLanguage = lang;
+            
+            // 保存到 localStorage
+            localStorage.setItem('language', lang);
+            
+            // 更新按钮状态
+            document.getElementById('lang-zh').classList.toggle('active', lang === 'zh-CN');
+            document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+            
+            // 更新页面语言
+            updatePageLanguage();
+        }
+
+        function detectBrowserLanguage() {
+            // 检查是否有保存的语言偏好
+            const savedLang = localStorage.getItem('language');
+            if (savedLang && translations[savedLang]) {
+                return savedLang;
+            }
+            
+            // 检测浏览器语言
+            const browserLang = navigator.language || navigator.userLanguage;
+            
+            // 检查是否是中文
+            if (browserLang.startsWith('zh')) {
+                return 'zh-CN';
+            }
+            
+            // 默认返回英文
+            return 'en';
+        }
+
+        // 初始化语言
+        function initializeLanguage() {
+            const detectedLang = detectBrowserLanguage();
+            currentLanguage = detectedLang;
+            
+            // 更新按钮状态
+            document.getElementById('lang-zh').classList.toggle('active', detectedLang === 'zh-CN');
+            document.getElementById('lang-en').classList.toggle('active', detectedLang === 'en');
+            
+            // 更新页面语言
+            updatePageLanguage();
+        }
 
         // 文件上传处理
         const uploadArea = document.getElementById('uploadArea');
@@ -838,7 +1063,7 @@
         // 处理文件
         function handleFile(file) {
             if (!file.name.endsWith('.json')) {
-                showError('请选择一个有效的 JSON 文件');
+                showError(t('upload.invalid'));
                 return;
             }
 
@@ -855,7 +1080,7 @@
                     processData();
                     showStats();
                 } catch (error) {
-                    showError('JSON 文件解析失败: ' + error.message);
+                    showError(t('upload.parse_error') + error.message);
                 }
             };
             reader.readAsText(file);
@@ -866,7 +1091,7 @@
             uploadArea.innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
-                    <p>正在处理文件...</p>
+                    <p>${t('upload.loading')}</p>
                 </div>
             `;
         }
@@ -875,9 +1100,9 @@
         function showError(message) {
             uploadArea.innerHTML = `
                 <div class="error-message">
-                    <h3>❌ 错误</h3>
+                    <h3>❌ ${t('upload.error')}</h3>
                     <p>${message}</p>
-                    <button class="btn" onclick="location.reload()">重新开始</button>
+                    <button class="btn" onclick="loadNewFile()">${t('upload.restart')}</button>
                 </div>
             `;
         }
@@ -1036,11 +1261,11 @@
         function updateFileInfo() {
             const fileInfoEl = document.getElementById('fileInfo');
             const fileSize = (currentFileSize / 1024).toFixed(1);
-            const createTime = new Date().toLocaleString('zh-CN');
+            const createTime = new Date().toLocaleString(currentLanguage === 'zh-CN' ? 'zh-CN' : 'en-US');
             
             fileInfoEl.innerHTML = `
                 📄 ${currentFileName} (${fileSize} KB)<br>
-                🕐 加载时间: ${createTime}
+                ${t('time.loaded')}${createTime}
             `;
         }
 
@@ -1052,19 +1277,19 @@
             overallStatsEl.innerHTML = `
                 <div class="stat-card">
                     <div class="stat-number total">${stats.totalFiles}</div>
-                    <div class="stat-label">总文件数${stats.statsContext}</div>
+                    <div class="stat-label">${t('stats.total_files')}${stats.statsContext}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number finished">${stats.totalFinished}</div>
-                    <div class="stat-label">已完成条目${stats.statsContext}</div>
+                    <div class="stat-label">${t('stats.finished_entries')}${stats.statsContext}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number unfinished">${stats.totalUnfinished}</div>
-                    <div class="stat-label">未完成条目${stats.statsContext}</div>
+                    <div class="stat-label">${t('stats.unfinished_entries')}${stats.statsContext}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number progress">${stats.overallProgress}%</div>
-                    <div class="stat-label">总体进度${stats.statsContext}</div>
+                    <div class="stat-label">${t('stats.overall_progress')}${stats.statsContext}</div>
                 </div>
             `;
         }
@@ -1115,7 +1340,7 @@
                 const selectedLangName = getLanguageDisplayName(selectedLanguageFilter);
                 statsContext = ` (${selectedLangName})`;
             } else {
-                statsContext = ' (所有语言)';
+                statsContext = ` ${t('stats.all_languages')}`;
             }
 
             // 根据计算模式选择基准
@@ -1127,7 +1352,7 @@
                 totalFinished,
                 totalUnfinished: denominator - totalFinished,
                 overallProgress,
-                statsContext: statsContext + ` [${calculationMode === 'target' ? '目标基准' : '原文基准'}]`
+                statsContext: statsContext + ` ${calculationMode === 'target' ? t('stats.target_based') : t('stats.source_based')}`
             };
         }
 
@@ -1208,7 +1433,7 @@
                     totalFinished += langStats.stats.finished;
                     totalUnfinished += langStats.stats.unfinished;
                 });
-                displayContext = ' (所有语言)';
+                displayContext = t('file.all_languages');
             }
 
             // 根据计算模式选择基准
@@ -1242,7 +1467,7 @@
             Object.entries(group.target_stats).forEach(([langCode, langData]) => {
                 const stats = langData.stats;
                 const total = stats.finished + stats.unfinished;
-                const progress = total > 0 ? Math.round((stats.finished / total) * 100) : 0;
+                const progress = total > 0 ? ((stats.finished / total) * 100).toFixed(2) : '0.00';
 
                 html += `
                     <div class="lang-card">
@@ -1251,12 +1476,12 @@
                             <div class="lang-progress-fill" style="width: ${progress}%"></div>
                         </div>
                         <div class="lang-stats-text">
-                            <span>已完成: ${stats.finished}</span>
-                            <span>未完成: ${stats.unfinished}</span>
-                            <span>进度: ${progress}%</span>
+                            <span>${t('file.finished')}: ${stats.finished}</span>
+                            <span>${t('file.unfinished')}: ${stats.unfinished}</span>
+                            <span>${t('file.progress')}: ${progress}%</span>
                         </div>
                         <div style="font-size: 0.8em; color: #888; margin-top: 5px;">
-                            路径: ${langData.resource_path}
+                            ${t('file.path')}: ${langData.resource_path}
                         </div>
                     </div>
                 `;
@@ -1479,14 +1704,14 @@
             languageItem.dataset.languageCode = langCode;
 
             const total = langData.totalFinished + langData.totalUnfinished;
-            const overallProgress = total > 0 ? Math.round((langData.totalFinished / total) * 100) : 0;
+            const overallProgress = total > 0 ? ((langData.totalFinished / total) * 100).toFixed(2) : '0.00';
             const displayName = getLanguageDisplayName(langCode);
             
             languageItem.innerHTML = `
                 <div class="language-header" onclick="toggleLanguageDetails(${index})">
                     <div class="language-title-section">
                         <div class="language-code-title">${displayName}</div>
-                        <div class="language-code-subtitle">共 ${langData.totalFiles} 个翻译文件</div>
+                        <div class="language-code-subtitle">${langData.totalFiles} ${t('language.files_count')}</div>
                     </div>
                     <div class="language-progress-section">
                         <div class="language-progress-text">${overallProgress}%</div>
@@ -1497,19 +1722,19 @@
                     <div class="language-summary">
                         <div class="language-stat">
                             <div class="language-stat-number total">${langData.totalFiles}</div>
-                            <div class="language-stat-label">翻译文件</div>
+                            <div class="language-stat-label">${t('language.files')}</div>
                         </div>
                         <div class="language-stat">
                             <div class="language-stat-number finished">${langData.totalFinished}</div>
-                            <div class="language-stat-label">已完成条目</div>
+                            <div class="language-stat-label">${t('language.finished_entries')}</div>
                         </div>
                         <div class="language-stat">
                             <div class="language-stat-number unfinished">${langData.totalUnfinished}</div>
-                            <div class="language-stat-label">未完成条目</div>
+                            <div class="language-stat-label">${t('language.unfinished_entries')}</div>
                         </div>
                         <div class="language-stat">
                             <div class="language-stat-number progress">${overallProgress}%</div>
-                            <div class="language-stat-label">总体进度</div>
+                            <div class="language-stat-label">${t('language.overall_progress')}</div>
                         </div>
                     </div>
                     <div class="language-files">
@@ -1528,7 +1753,7 @@
                     <div class="language-file-path">${file.sourcePath}</div>
                     <div class="language-file-stats">
                         <div class="language-file-progress">
-                            <span>已完成: ${file.finished} | 未完成: ${file.unfinished}</span>
+                            <span>${t('file.finished')}: ${file.finished} | ${t('file.unfinished')}: ${file.unfinished}</span>
                             <div class="mini-progress-bar">
                                 <div class="mini-progress-fill" style="width: ${file.progress}%"></div>
                             </div>
@@ -1536,7 +1761,7 @@
                         </div>
                     </div>
                     <div style="font-size: 0.8em; color: #888; margin-top: 5px;">
-                        目标文件: ${file.targetPath}
+                        ${t('language.target_file')}: ${file.targetPath}
                     </div>
                 </div>
             `).join('');
@@ -1655,9 +1880,9 @@
             // 直接重置内容，不需要克隆
             uploadArea.innerHTML = `
                 <div class="upload-icon">📁</div>
-                <h3>点击选择或拖拽 JSON 文件到此处</h3>
-                <p>支持 deepin-translation-utils 生成的统计文件</p>
-                <button class="btn" onclick="document.getElementById('fileInput').click()">选择文件</button>
+                <h3>${t('upload.title')}</h3>
+                <p>${t('upload.description')}</p>
+                <button class="btn" onclick="document.getElementById('fileInput').click()">${t('upload.button')}</button>
                 <input type="file" id="fileInput" class="file-input" accept=".json" />
             `;
             
@@ -1683,6 +1908,11 @@
             uploadArea.addEventListener('dragleave', uploadEventHandlers.dragleave);
             uploadArea.addEventListener('drop', uploadEventHandlers.drop);
         }
+
+        // 页面加载完成后初始化语言
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeLanguage();
+        });
     </script>
 </body>
 </html>
