@@ -15,5 +15,5 @@ configparser = { version = "3.1.0", features = ["indexmap"] }
 serde_json = "1.0.140"
 directories = "6.0.0"
 ureq = "3.0.11"
-polib = { git = "https://github.com/BrettDong/polib.git", rev = "a8b7616" }
+polib = "0.3.0"
 walkdir = "2.5.0"
