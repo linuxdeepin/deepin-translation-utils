@@ -21,7 +21,7 @@ pub enum CmdError {
     #[error("Fail to match resources because: {0}")]
     MatchResources(#[source] std::io::Error),
     #[error("Fail to serialize stats to YAML: {0}")]
-    SerdeYaml(#[from] serde_yml::Error),
+    SerdeYaml(#[from] serde_yaml2::ser::Errors),
     #[error("Fail to serialize stats to JSON: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }
@@ -123,8 +123,8 @@ impl ProjectResourceStats {
         }
     }
 
-    pub fn print_stats_yaml(&self) -> Result<(), serde_yml::Error> {
-        let yaml_str = serde_yml::to_string::<Self>(self)?;
+    pub fn print_stats_yaml(&self) -> Result<(), serde_yaml2::ser::Errors> {
+        let yaml_str = serde_yaml2::to_string(self)?;
         println!("{}", yaml_str);
         Ok(())
     }

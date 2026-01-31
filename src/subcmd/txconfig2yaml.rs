@@ -13,7 +13,7 @@ pub enum CmdError {
     #[error("Fail to load .tx/config file because: {0}")]
     LoadTxConfig(#[from] LoadTxConfigError),
     #[error("Fail to save transifex.yaml file because: {0}")]
-    SaveTransifexYaml(#[from] serde_yml::Error),
+    SaveTransifexYaml(#[from] serde_yaml2::ser::Errors),
 }
 
 pub fn subcmd_txconfig2yaml(project_root: &PathBuf) -> Result<(), CmdError> {
@@ -23,9 +23,9 @@ pub fn subcmd_txconfig2yaml(project_root: &PathBuf) -> Result<(), CmdError> {
     if tx_yaml_path.exists() {
         println!("Note: {tx_yaml_path:?} file already exists, not overwriting it.");
         println!("You can use the following context to update the file manually:\n");
-        println!("{}", serde_yml::to_string::<TransifexYaml>(&tx_yaml)?);
+        println!("{}", serde_yaml2::to_string::<TransifexYaml>(tx_yaml)?);
     } else {
-        fs::write(&tx_yaml_path, serde_yml::to_string::<TransifexYaml>(&tx_yaml)?).unwrap();
+        fs::write(&tx_yaml_path, serde_yaml2::to_string::<TransifexYaml>(tx_yaml)?).unwrap();
         println!("Wrote transifex.yaml file to: {}", tx_yaml_path.display());
     }
 

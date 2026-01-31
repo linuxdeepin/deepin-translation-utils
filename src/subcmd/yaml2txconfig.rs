@@ -58,7 +58,7 @@ fn fetch_project_list(organization_slug: &str, force_online: bool) -> Vec<String
     
     if cache_file.exists() && !force_online {
         let source_content = fs::read_to_string(&cache_file).expect("Failed to read cached project list");
-        let list = serde_yml::from_str::<Vec<String>>(source_content.as_str()).expect("Failed to parse cached project list");
+        let list = serde_yaml2::from_str::<Vec<String>>(source_content.as_str()).expect("Failed to parse cached project list");
         return list;
     } else {
         let client = TransifexRestApi::new_from_transifexrc().expect("Failed to create Transifex REST client");
@@ -67,7 +67,7 @@ fn fetch_project_list(organization_slug: &str, force_online: bool) -> Vec<String
         let entries = client.get_all_projects(organization_slug).expect("Failed to fetch project resource list");
         let entries = entries.into_iter().map(|entry| entry.id.to_string());
         let entries: Vec<String> = entries.collect();
-        let cache_content = serde_yml::to_string::<Vec<String>>(&entries).expect("Failed to serialize project list as cache");
+        let cache_content = serde_yaml2::to_string(&entries).expect("Failed to serialize project list as cache");
         let parent_dir = cache_file.parent().expect("Failed to get cache file parent directory");
         fs::create_dir_all(&parent_dir).expect("Failed to create cache directory");
         fs::write(&cache_file, cache_content).expect("Failed to write cache file");
@@ -82,7 +82,7 @@ fn fetch_linked_resource_list(organization_slug: &str, project_slug: &str, force
     if cache_file.exists() && !force_online {
         println!("Reusing o:{organization_slug}:p:{project_slug} project resource list from local cache...");
         let source_content = fs::read_to_string(&cache_file).expect("Failed to read cached project resource list");
-        let list = serde_yml::from_str::<Vec<TxResourceLookupEntry>>(source_content.as_str()).expect("Failed to parse cached project resource list");
+        let list = serde_yaml2::from_str::<Vec<TxResourceLookupEntry>>(source_content.as_str()).expect("Failed to parse cached project resource list");
         return list;
     } else {
         let client = TransifexRestApi::new_from_transifexrc().expect("Failed to create Transifex REST client");
@@ -90,7 +90,7 @@ fn fetch_linked_resource_list(organization_slug: &str, project_slug: &str, force
         println!("Fetching o:{organization_slug}:p:{project_slug} project resource list from Transifex...");
         let entries = client.get_all_linked_resources(organization_slug, project_slug).expect("Failed to fetch project resource list");
         let entries = entries.into_iter().filter_map(|entry| entry.parse_linked_resource_category()).collect();
-        let cache_content = serde_yml::to_string::<Vec<TxResourceLookupEntry>>(&entries).expect("Failed to serialize project resource list as cache");
+        let cache_content = serde_yaml2::to_string(&entries).expect("Failed to serialize project resource list as cache");
         let parent_dir = cache_file.parent().unwrap();
         fs::create_dir_all(&parent_dir).expect("Failed to create cache directory");
         fs::write(&cache_file, cache_content).expect(format!("Failed to write project cache file to {cache_file:?}").as_str());

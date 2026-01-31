@@ -15,7 +15,7 @@ pub enum CmdError {
     #[error("Failed to read directory: {0}")]
     ReadDir(#[from] std::io::Error),
     #[error("Failed to serialize configuration: {0}")]
-    SerializeYaml(#[from] serde_yml::Error),
+    SerializeYaml(#[from] serde_yaml2::ser::Errors),
     #[error("Unknown translation file type: {path:?}")]
     UnknownI18nFileType { path: PathBuf },
 }
@@ -61,9 +61,9 @@ pub fn subcmd_gentxcfg(project_root: &PathBuf, format: crate::cli::TxConfigForma
             if output_path.exists() {
                 println!("Note: {:?} file already exists, not overwriting.", output_path);
                 println!("You can use the following content to update the file manually:\n");
-                println!("{}", serde_yml::to_string(&tx_yaml)?);
+                println!("{}", serde_yaml2::to_string(&tx_yaml)?);
             } else {
-                let yaml_content = serde_yml::to_string(&tx_yaml)?;
+                let yaml_content = serde_yaml2::to_string(&tx_yaml)?;
                 fs::write(&output_path, yaml_content)?;
                 println!("Generated transifex.yaml file: {}", output_path.display());
             }

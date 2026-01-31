@@ -172,7 +172,7 @@ pub enum LoadTxYamlError {
     #[error("Can not read file")]
     ReadFile(#[from] std::io::Error),
     #[error("Fail to deserialize file: {0}")]
-    Serde(#[from] serde_yml::Error),
+    Serde(#[from] serde::de::value::Error),
     #[error("Fail to convert from .tx/config file: {0:?}")]
     ConvertFile(#[from] LoadTxConfigError),
 }
@@ -198,7 +198,7 @@ pub fn load_tx_yaml_file(transifex_yaml_file: &PathBuf) -> Result<TransifexYaml,
         return Err(LoadTxYamlError::FileNotFound);
     }
     let source_content = fs::read_to_string(&transifex_yaml_file)?;
-    Ok(serde_yml::from_str::<TransifexYaml>(source_content.as_str())?)
+    Ok(serde_yaml2::from_str::<TransifexYaml>(source_content.as_str())?)
 }
 
 fn create_filter_pattern(pattern: &str) -> Option<Regex> {
@@ -238,7 +238,7 @@ settings:
 
     #[test]
     fn tst_parse_tx_yaml_content() {
-        let tx_yaml: TransifexYaml = serde_yml::from_str::<TransifexYaml>(TEST_TX_YAML_CONTENT).unwrap();
+        let tx_yaml: TransifexYaml = serde_yaml2::from_str::<TransifexYaml>(TEST_TX_YAML_CONTENT).unwrap();
         assert_eq!(tx_yaml.filters.len(), 2);
         assert_eq!(tx_yaml.filters[0].type_attr, "file");
         assert_eq!(tx_yaml.filters[0].source, "shell-launcher-applet/translations/org.deepin.ds.dock.launcherapplet.ts");
@@ -249,7 +249,7 @@ settings:
 
     #[test]
     fn tst_convert_to_tx_config() {
-        let tx_yaml: TransifexYaml = serde_yml::from_str::<TransifexYaml>(TEST_TX_YAML_CONTENT).unwrap();
+        let tx_yaml: TransifexYaml = serde_yaml2::from_str::<TransifexYaml>(TEST_TX_YAML_CONTENT).unwrap();
         let tx_config = tx_yaml.to_tx_config("user/repo".to_string(), vec![]);
         assert_eq!(tx_config.resource_sections[0].resource_full_slug, "o:unknown-org:p:unknown-proj:r:unknown-res-1");
         assert_eq!(tx_config.resource_sections[0].file_filter, "shell-launcher-applet/translations/org.deepin.ds.dock.launcherapplet_<lang>.ts");
