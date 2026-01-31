@@ -13,6 +13,26 @@ This program currently supports the following features:
 - Generate a single `.tx/config` contains all linked resources under the given Transifex organization.
 - Generate `.tx/transifex.yaml` or `.tx/config` based on the (`.po` abd `.ts`) translation files inside the given source repo.
 
+## Install
+
+### Via `cargo-binstall` (suggested)
+
+If you have [`cargo-binstall`](https://github.com/cargo-bins/cargo-binstall) installed, you can use it to install this program.
+
+```bash
+cargo binstall deepin-translation-utils
+```
+
+### Via `cargo install`
+
+```bash
+cargo install deepin-translation-utils
+```
+
+### Manual download
+
+Get the latest release at [GitHub Release page](https://github.com/linuxdeepin/deepin-translation-utils/releases/latest), download it, extract it, and put it in your `$PATH` (usually we suggest to use `~/.local/bin/`).
+
 ## Usage
 
 Please consult `deepin-translation-utils --help`.
