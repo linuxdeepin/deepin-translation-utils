@@ -37,6 +37,8 @@ pub enum Commands {
         source_language: String,
         #[arg(short, long, default_value = "zh_HK,zh_TW", value_delimiter = ',')]
         target_languages: Vec<String>,
+        #[arg(long, action = clap::ArgAction::SetTrue, default_value_t = false)]
+        no_button_spacing: bool,
         linguist_ts_file: PathBuf,
     },
 
@@ -149,8 +151,8 @@ pub fn execute() -> Result<(), CliError> {
 
     use crate::subcmd;
     match args.command {
-        Commands::ZhConv { source_language, target_languages, linguist_ts_file } => {
-            subcmd::subcmd_zhconv(&source_language, &target_languages, &linguist_ts_file)?;
+        Commands::ZhConv { source_language, target_languages, no_button_spacing, linguist_ts_file } => {
+            subcmd::subcmd_zhconv(&source_language, &target_languages, &linguist_ts_file, !no_button_spacing)?;
         },
         Commands::ZhConvPlain { target_languages, content } => {
             subcmd::subcmd_zhconv_plain(&target_languages, &content)?;

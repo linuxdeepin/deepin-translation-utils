@@ -233,6 +233,68 @@ pub mod tests {
 </context>
 </TS>"#;
 
+    pub const TEST_ZH_CN_TS_CONTENT_WITH_BUTTON: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" ?><!DOCTYPE TS><TS language="zh_CN" version="2.1">
+<context>
+    <name>ts::ButtonContext</name>
+    <message>
+        <location filename="../../widget/button.ui" line="+17"/>
+        <source>Confirm</source>
+        <comment>button</comment>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <location filename="../../widget/button.ui" line="+26"/>
+        <source>Cancel</source>
+        <comment>button</comment>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="../../widget/button.ui" line="+35"/>
+        <source>Save</source>
+        <comment>button</comment>
+        <translation>保存</translation>
+    </message>
+    <message>
+        <location filename="../../widget/button.ui" line="+44"/>
+        <source>Delete</source>
+        <comment>button</comment>
+        <translation>删 除</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to quit?</source>
+        <comment>button</comment>
+        <translation>确定退出</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>打开</translation>
+    </message>
+</context>
+</TS>"#;
+
+    #[test]
+    fn tst_parse_ts_content_with_button() {
+        let ts = Ts::load_from_str(TEST_ZH_CN_TS_CONTENT_WITH_BUTTON).unwrap();
+        assert_eq!(ts.language, Some("zh_CN".to_string()));
+        assert_eq!(ts.contexts[0].messages.len(), 6);
+        // message 0: has comment "button" and 2-char translation "确定"
+        assert_eq!(ts.contexts[0].messages[0].comment, Some("button".to_string()));
+        assert_eq!(ts.contexts[0].messages[0].translation.value, Some("确定".to_string()));
+        // message 1: has comment "button" and 2-char translation "取消"
+        assert_eq!(ts.contexts[0].messages[1].comment, Some("button".to_string()));
+        assert_eq!(ts.contexts[0].messages[1].translation.value, Some("取消".to_string()));
+        // message 3: has comment "button" and pre-spaced 2-char translation "删 除"
+        assert_eq!(ts.contexts[0].messages[3].comment, Some("button".to_string()));
+        assert_eq!(ts.contexts[0].messages[3].translation.value, Some("删 除".to_string()));
+        // message 4: has comment "button" but 4-char translation "确定退出"
+        assert_eq!(ts.contexts[0].messages[4].comment, Some("button".to_string()));
+        assert_eq!(ts.contexts[0].messages[4].translation.value, Some("确定退出".to_string()));
+        // message 5: no comment, 2-char translation "打开"
+        assert_eq!(ts.contexts[0].messages[5].comment, None);
+        assert_eq!(ts.contexts[0].messages[5].translation.value, Some("打开".to_string()));
+    }
+
     #[test]
     fn tst_parse_ts_content() {
         let empty_ts: Ts = Ts::load_from_str(TEST_EMPTY_TS_CONTENT).unwrap();

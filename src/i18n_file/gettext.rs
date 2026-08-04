@@ -133,6 +133,46 @@ msgid "England"
 msgstr ""
 "#;
 
+    pub const TEST_ZH_CN_PO_CONTENT_WITH_BUTTON: &str = r#"msgid ""
+msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"Language: zh_CN\n"
+"X-Source-Language: C\n"
+"X-Qt-Contexts: true\n"
+
+#. button
+#: ../../widget/button.ui:17
+msgctxt "ts::ButtonContext|"
+msgid "Confirm"
+msgstr "确定"
+
+#. button
+#: ../../widget/button.ui:26
+msgctxt "ts::ButtonContext|"
+msgid "Cancel"
+msgstr "取消"
+
+#. button
+#: ../../widget/button.ui:43
+msgctxt "ts::ButtonContext|"
+msgid "Are you sure you want to quit?"
+msgstr "确定退出"
+
+#. button
+#: ../../widget/button.ui:52
+msgctxt "ts::ButtonContext|"
+msgid "Delete"
+msgstr "删 除"
+
+#: ../../widget/mainwindow.ui:17
+msgctxt "ts::SampleContext|"
+msgid "Open"
+msgstr "打开"
+"#;
+
     #[test]
     fn tst_parse_po_content() {
         let po = Po::load_from_str(TEST_ZH_CN_PO_CONTENT).unwrap();
