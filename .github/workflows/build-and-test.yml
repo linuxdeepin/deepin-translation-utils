@@ -13,7 +13,7 @@ jobs:
         BUILD_TARGET: [release]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
         fetch-tags: true
@@ -22,7 +22,7 @@ jobs:
     - name: Run tests
       run: cargo test --profile ${{ matrix.BUILD_TARGET }} --verbose
     - name: Upload release artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: deepin-translation-utils-ubuntu-24.04-amd64
         path: target/${{ matrix.BUILD_TARGET }}/deepin-translation-utils
@@ -37,7 +37,7 @@ jobs:
         GLIBC_VERSION: [2.28]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
         fetch-tags: true
@@ -46,7 +46,7 @@ jobs:
     - name: Cross Build
       run: cargo zigbuild --profile ${{ matrix.BUILD_TARGET }} --verbose --target ${{ matrix.BUILD_TRIPLE }}.${{ matrix.GLIBC_VERSION }}
     - name: Upload release artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: deepin-translation-utils-${{ matrix.BUILD_TRIPLE }}.${{ matrix.GLIBC_VERSION }}
         path: target/${{ matrix.BUILD_TRIPLE }}/${{ matrix.BUILD_TARGET }}/deepin-translation-utils
