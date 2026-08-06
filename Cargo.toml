@@ -1,6 +1,6 @@
 [package]
 name = "deepin-translation-utils"
-version = "0.6.1"
+version = "0.7.0"
 edition = "2024"
 license = "MIT"
 description = "Commandline tool to help you work with Qt Linguist-based and Gettext-based translation files, and Transifex platform-related configurations that are used in deepin's workflow."
