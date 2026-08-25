@@ -249,7 +249,7 @@ checksum = "6f55d7153ba3b507595872a3874803f07a8a81d1e888abed8e5db7da0597d6e2"
 
 [[package]]
 name = "deepin-translation-utils"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "clap",
  "configparser",
