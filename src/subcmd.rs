@@ -8,6 +8,7 @@ pub mod yaml2txconfig;
 pub mod txconfig2yaml;
 pub mod monotxconfig;
 pub mod gentxcfg;
+pub mod fill;
 
 pub use self::zhconv::{subcmd_zhconv, subcmd_zhconv_plain};
 pub use statistics::subcmd_statistics;
@@ -15,3 +16,4 @@ pub use yaml2txconfig::{subcmd_yaml2txconfig, create_linked_resources_table};
 pub use txconfig2yaml::subcmd_txconfig2yaml;
 pub use monotxconfig::subcmd_monotxconfig;
 pub use gentxcfg::subcmd_gentxcfg;
+pub use fill::{subcmd_fill_export, subcmd_fill_apply};

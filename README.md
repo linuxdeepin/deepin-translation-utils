@@ -12,6 +12,9 @@ This program currently supports the following features:
 - Generates Transifex GitHub integration `transifex.yaml` based on `.tx/config`.
 - Generate a single `.tx/config` contains all linked resources under the given Transifex organization.
 - Generate `.tx/transifex.yaml` or `.tx/config` based on the (`.po` abd `.ts`) translation files inside the given source repo.
+- Two-step translation back-fill pipeline driven by an external provider:
+  - `export-translation <project> <lang> [--limit N]` prints a JSON document listing every unfinished `.ts`/`.po` message (source, context, placeholders, plural-form count). `--limit` restricts the output to the first N messages for batch filling.
+  - `fill-translation <project> <json>` reads the document back once the `translation` fields are filled, validates placeholders and plural-form counts, and writes them into the files. Entries left empty are skipped, so the same document can be applied in several batches.
 
 ## Install
 

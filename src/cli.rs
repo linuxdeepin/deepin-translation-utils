@@ -134,6 +134,35 @@ pub enum Commands {
         #[arg(short, long, default_value = "build", value_delimiter = ',')]
         ignore_paths: Vec<String>,
     },
+
+    #[command(name = "export-translation")]
+    #[command(
+        about = "Export unfinished translations of the project as a JSON document",
+        long_about = "Scan the project (following transifex.yaml or .tx/config) for the given target language and print a JSON document listing every unfinished message along with its context, source text, placeholders and plural-form count.\n\n\
+            Nothing is modified on disk. The JSON document can be fed into the `fill-translation` subcommand once the `translation` fields have been filled in.",
+    )]
+    ExportTranslation {
+        project_root: PathBuf,
+        /// target language code to export unfinished translations for
+        target_language: String,
+        /// source language code (used for informational purposes in the exported document)
+        #[arg(short, long, default_value = "en_US")]
+        source_language: String,
+        /// only export the first N unfinished messages across all resources (for batch filling)
+        #[arg(long)]
+        limit: Option<usize>,
+    },
+
+    #[command(name = "fill-translation")]
+    #[command(
+        about = "Apply translations from a JSON document produced by `export-translation`",
+        long_about = "Read back the JSON document produced by `export-translation`, validate each filled translation preserves the source placeholders and the expected number of plural forms, then write the translations into the corresponding .ts / .po files, marking them finished.\n\nEntries left with an empty/None translation are skipped, so the same exported document can be applied in several batches.",
+    )]
+    FillTranslation {
+        project_root: PathBuf,
+        /// JSON document produced by `export-translation`, with translations filled in
+        json_file: PathBuf,
+    },
 }
 
 #[derive(TeError, Debug)]
@@ -144,6 +173,8 @@ pub enum CliError {
     Yaml2TxConfig(#[from] crate::subcmd::yaml2txconfig::CmdError),
     TxConfig2Yaml(#[from] crate::subcmd::txconfig2yaml::CmdError),
     GenTxCfg(#[from] crate::subcmd::gentxcfg::CmdError),
+    ExportTranslation(#[from] crate::subcmd::fill::CmdError),
+    FillTranslation(crate::subcmd::fill::CmdError),
 }
 
 pub fn execute() -> Result<(), CliError> {
@@ -171,6 +202,12 @@ pub fn execute() -> Result<(), CliError> {
         },
         Commands::GenTxCfg { project_root, format, ignore_paths } => {
             subcmd::subcmd_gentxcfg(&project_root, format, ignore_paths)?;
+        },
+        Commands::ExportTranslation { project_root, target_language, source_language, limit } => {
+            subcmd::subcmd_fill_export(&project_root, &target_language, &source_language, limit)?;
+        },
+        Commands::FillTranslation { project_root, json_file } => {
+            subcmd::subcmd_fill_apply(&project_root, &json_file).map_err(CliError::FillTranslation)?;
         },
     }
 

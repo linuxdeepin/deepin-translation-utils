@@ -5,3 +5,4 @@
 pub mod common;
 pub mod linguist;
 pub mod gettext;
+pub mod placeholder;
