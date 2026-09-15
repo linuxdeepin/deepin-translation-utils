@@ -23,31 +23,26 @@ use std::path::{Path, PathBuf};
 use thiserror::Error as TeError;
 
 use crate::i18n_file::{
-    self,
     placeholder,
     gettext::Po,
     linguist::{TranslationType, Ts},
 };
-use crate::transifex::project_file::{try_load_transifex_project_file, TxProjectFileLoadError};
+use crate::subcmd::resources::{collect_resource_paths, lang_kind_from_path, ResourceError};
 
 // ===== Error =====
 
 #[derive(TeError, Debug)]
 pub enum CmdError {
-    #[error("Fail to load Transifex project file because: {0}")]
-    LoadTxProjectFile(#[from] TxProjectFileLoadError),
-    #[error("Fail to match resources because: {0}")]
-    MatchResources(#[source] std::io::Error),
-    #[error("Can not guess translation file kind from path {0:?} because: {1}")]
-    GuessI18nFileType(PathBuf, #[source] i18n_file::common::UnknownI18nFileExtError),
+    #[error(transparent)]
+    ResourceDiscovery(#[from] ResourceError),
     #[error("Fail to load Qt Linguist TS file {0:?} because: {1}")]
-    LoadTsFile(PathBuf, #[source] i18n_file::linguist::TsLoadError),
+    LoadTsFile(PathBuf, #[source] crate::i18n_file::linguist::TsLoadError),
     #[error("Fail to load Gettext PO file {0:?} because: {1}")]
-    LoadPoFile(PathBuf, #[source] i18n_file::gettext::PoLoadError),
+    LoadPoFile(PathBuf, #[source] crate::i18n_file::gettext::PoLoadError),
     #[error("Fail to save Qt Linguist TS file {0:?} because: {1}")]
-    SaveTsFile(PathBuf, #[source] i18n_file::linguist::TsSaveError),
+    SaveTsFile(PathBuf, #[source] crate::i18n_file::linguist::TsSaveError),
     #[error("Fail to save Gettext PO file {0:?} because: {1}")]
-    SavePoFile(PathBuf, #[source] i18n_file::gettext::PoSaveError),
+    SavePoFile(PathBuf, #[source] crate::i18n_file::gettext::PoSaveError),
     #[error("Target language code is empty")]
     EmptyTargetLanguage,
     #[error("The provided file {0:?} does not exist")]
@@ -137,37 +132,6 @@ pub enum FillTranslation {
     Plural(Vec<String>),
 }
 
-// ===== Resources discovery =====
-
-fn lang_kind_from_path(path: &Path) -> Result<String, CmdError> {
-    use i18n_file::common::I18nFileKind;
-    match I18nFileKind::from_ext_hint(path) {
-        Ok(I18nFileKind::Linguist) => Ok("ts".to_string()),
-        Ok(I18nFileKind::Gettext) => Ok("po".to_string()),
-        Err(e) => Err(CmdError::GuessI18nFileType(path.to_path_buf(), e)),
-    }
-}
-
-/// Collect the target-language resource file paths for every supported filter.
-fn collect_resource_paths(project_root: &PathBuf, target_language: &str) -> Result<Vec<PathBuf>, CmdError> {
-    let (_, tx_yaml) = try_load_transifex_project_file(project_root)?;
-    let mut rv = Vec::new();
-    for filter in &tx_yaml.filters {
-        if (filter.format != "QT" && filter.format != "PO") || filter.type_attr != "file" {
-            continue;
-        }
-        let matched = filter
-            .match_target_files(project_root)
-            .map_err(CmdError::MatchResources)?;
-        rv.extend(
-            matched
-                .into_iter()
-                .filter_map(|(lang, path)| (lang == target_language).then_some(path)),
-        );
-    }
-    Ok(rv)
-}
-
 // ===== Export =====
 
 /// Take at most `limit` entries from `entries`, returning the taken entries and
@@ -196,7 +160,7 @@ pub fn subcmd_fill_export(
 
     let mut remaining = limit.unwrap_or(usize::MAX);
 
-    for path in collect_resource_paths(project_root, target_language)? {
+    for path in collect_resource_paths(project_root, &[target_language.to_string()])? {
         if remaining == 0 {
             break;
         }

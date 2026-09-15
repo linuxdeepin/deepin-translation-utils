@@ -15,6 +15,8 @@
 - 两步骤的翻译回填管道，供外部翻译提供方（如 AI 工具）批量填充未完成翻译：
   - `export-translation <项目> <语言> [--limit N]` 将项目内所有未完成的 `.ts`/`.po` 条目（原文、上下文、占位符与复数形式数量）输出为 JSON 文档。`--limit` 可限制仅导出前 N 条，便于分批处理。
   - `fill-translation <项目> <json>` 读取已填充 `translation` 字段的该 JSON 文档，校验占位符与复数形式数量无误后写入对应文件。留空的条目会被跳过，因此同一文档可分多批次应用。
+- 清除已有翻译译文的条目上的未完成标记：
+  - `clear-unfinished <项目> [-l 语言1,语言2]` 移除 Qt Linguist TS 文件中已有非空译文的条目上的 `type="unfinished"` 标记，并移除 GNU Gettext PO 文件中已有非空 `msgstr` 的条目上的 `fuzzy` 标志。没有翻译译文的条目不会被改动。
 
 ## 安装
 

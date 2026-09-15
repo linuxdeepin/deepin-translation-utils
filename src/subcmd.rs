@@ -9,6 +9,8 @@ pub mod txconfig2yaml;
 pub mod monotxconfig;
 pub mod gentxcfg;
 pub mod fill;
+pub mod resources;
+pub mod clear_unfinished;
 
 pub use self::zhconv::{subcmd_zhconv, subcmd_zhconv_plain};
 pub use statistics::subcmd_statistics;
@@ -17,3 +19,4 @@ pub use txconfig2yaml::subcmd_txconfig2yaml;
 pub use monotxconfig::subcmd_monotxconfig;
 pub use gentxcfg::subcmd_gentxcfg;
 pub use fill::{subcmd_fill_export, subcmd_fill_apply};
+pub use clear_unfinished::subcmd_clear_unfinished;

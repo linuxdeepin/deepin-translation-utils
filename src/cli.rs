@@ -163,6 +163,20 @@ pub enum Commands {
         /// JSON document produced by `export-translation`, with translations filled in
         json_file: PathBuf,
     },
+
+    #[command(name = "clear-unfinished")]
+    #[command(
+        about = "Remove unfinished marks of entries which already have translation content",
+        long_about = "Scan the project (following transifex.yaml or .tx/config) for translation entries which are marked as unfinished but actually contain translation content, remove those marks and save the files back.\n\n\
+            For Qt Linguist TS files, entries with `type=\"unfinished\"` and a non-empty translation (or fully filled numerusforms for plural entries) get their type attribute removed. Vanished and obsolete entries are not touched.\n\n\
+            For GNU Gettext PO files, entries carrying the fuzzy flag with non-empty msgstr (or fully filled msgstr[N] for plural entries) get the flag removed.",
+    )]
+    ClearUnfinished {
+        project_root: PathBuf,
+        /// languages that needs to be processed, by default (empty), all languages will be processed
+        #[arg(short = 'l', long, value_delimiter = ',')]
+        accept_languages: Vec<String>,
+    },
 }
 
 #[derive(TeError, Debug)]
@@ -175,6 +189,7 @@ pub enum CliError {
     GenTxCfg(#[from] crate::subcmd::gentxcfg::CmdError),
     ExportTranslation(#[from] crate::subcmd::fill::CmdError),
     FillTranslation(crate::subcmd::fill::CmdError),
+    ClearUnfinished(#[from] crate::subcmd::clear_unfinished::CmdError),
 }
 
 pub fn execute() -> Result<(), CliError> {
@@ -208,6 +223,9 @@ pub fn execute() -> Result<(), CliError> {
         },
         Commands::FillTranslation { project_root, json_file } => {
             subcmd::subcmd_fill_apply(&project_root, &json_file).map_err(CliError::FillTranslation)?;
+        },
+        Commands::ClearUnfinished { project_root, accept_languages } => {
+            subcmd::subcmd_clear_unfinished(&project_root, &accept_languages)?;
         },
     }
 
