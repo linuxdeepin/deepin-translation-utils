@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use std::{fs, path::PathBuf};
+use std::{fs, path::{Path, PathBuf}};
 use thiserror::Error as TeError;
 use walkdir::WalkDir;
 use regex::Regex;
@@ -103,7 +103,7 @@ fn scan_all_translation_files(project_root: &PathBuf, ignore_paths: &[String]) -
         }
 
         // Check if it's a translation file
-        if let Ok(_) = I18nFileKind::from_ext_hint(path) {
+        if I18nFileKind::from_ext_hint(path).is_ok() {
             translation_files.push(path.to_path_buf());
         }
     }
@@ -204,7 +204,7 @@ fn select_best_source_file(candidates: &[PathBuf]) -> Option<PathBuf> {
 /// Get priority score for source file selection
 /// Higher score means higher priority
 /// Priority: no language code > en > en_US > en_GB
-fn get_source_file_priority(file_path: &PathBuf) -> u32 {
+fn get_source_file_priority(file_path: &Path) -> u32 {
     let filename = file_path.file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("");
@@ -212,23 +212,15 @@ fn get_source_file_priority(file_path: &PathBuf) -> u32 {
     // Check for language codes in filename
     let detected_langs = find_language_codes_in_filename(filename);
 
-    if detected_langs.is_empty() {
-        // No language code in filename - highest priority
-        return 100;
-    }
-
     // Check for specific English variants in priority order
-    for lang_code in &detected_langs {
-        match lang_code.as_str() {
-            "en" => return 90,           // en has higher priority than en_US/en_GB
-            "en_US" => return 80,        // en_US has higher priority than en_GB
-            "en_GB" => return 70,        // en_GB has lowest priority among English
-            _ => return 10,              // Non-English language codes have very low priority
-        }
+    match detected_langs.first().map(String::as_str) {
+        // No language code in filename - highest priority
+        None => 100,
+        Some("en") => 90,           // en has higher priority than en_US/en_GB
+        Some("en_US") => 80,        // en_US has higher priority than en_GB
+        Some("en_GB") => 70,        // en_GB has lowest priority among English
+        Some(_) => 10,              // Non-English language codes have very low priority
     }
-
-    // Default priority for files without recognized language codes
-    50
 }
 
 
@@ -595,7 +587,7 @@ fn verify_language_code_in_path(_file_path: &std::path::Path, suspected_lang_cod
     #[cfg(test)]
     {
         println!("Not verifying language code in path because of test mode: {}", suspected_lang_code);
-        return true;
+        true
     }
 
     #[cfg(not(test))]

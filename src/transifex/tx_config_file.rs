@@ -52,14 +52,11 @@ impl TransifexRcSection {
 
         let mut tx_section = TransifexRcSection::default();
 
-        let sections = config.sections();
-        for section in sections {
-            tx_section.host_section = section.to_string();
+        if let Some(section) = config.sections().into_iter().next() {
             tx_section.rest_hostname = config.get(&section, "rest_hostname").ok_or(LoadTxConfigError::ParseFile("missing rest_hostname key".to_string()))?;
             tx_section.token = config.get(&section, "token").ok_or(LoadTxConfigError::ParseFile("missing token key".to_string()))?;
-
-            break;
-        };
+            tx_section.host_section = section;
+        }
         Ok(tx_section)
     }
 }
@@ -74,7 +71,7 @@ pub fn load_tx_config_file(tx_config_file: &PathBuf) -> Result<TxConfig, LoadTxC
     if !tx_config_file.is_file() {
         return Err(LoadTxConfigError::FileNotFound);
     }
-    let source_content = fs::read_to_string(&tx_config_file)?;
+    let source_content = fs::read_to_string(tx_config_file)?;
     TxConfig::from_str(&source_content)
 }
 
